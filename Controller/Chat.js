@@ -4,7 +4,8 @@ const Chat = require("../Model/Chat");
 const { ALERT, REFETCH_CHATS, NEW_ATTACHMENT, NEW_MESSAGE_ALERT } = require("../constants/events");
 const { getOtherMember } = require("../Utils/helper");
 const User = require("../Model/User");
-const Message = require("../Model/Message")
+const Message = require("../Model/Message");
+const uploadOnS3 = require("../Utils/awsS3");
 
 const HttpStatus = {
   OK: 200,
@@ -31,8 +32,25 @@ const StatusMessage = {
   NOT_FOUND: "Data not found.",
 };
 
+exports.uploadFile = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "Invalid request" });
+    }
+
+    let fileName = req.file.originalname;
+
+    let url = await uploadOnS3(req.file.buffer, fileName);
+
+    return res.status(200).json({ status: true, url: url });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 exports.newGroupChat = async (req, res, next) => {
-  const { name, members } = req.body;
+  const { name, members, habit, groupImage, groupDescription, activityDuration, monetaryPotAmount } = req.body;
   try {
     if (members.length < 2) {
       return res.status(400).json({
@@ -48,6 +66,11 @@ exports.newGroupChat = async (req, res, next) => {
       groupChat: true,
       creator: req.user,
       members: allMembers,
+      habit,
+      groupImage,
+      groupDescription,
+      activityDuration,
+      monetaryPotAmount,
     });
 
     emitEvent(req, ALERT, allMembers, `Welcome to ${name} Group`);
@@ -96,22 +119,36 @@ exports.getMyChat = async (req, res ,next) => {
 };
 
 exports.getMyGroups = async (req, res, next) => {
-  const chats = await Chat.find({
-    members: req.user,
-    groupChat: true,
-    creator: req.user
-  }).populate("members", "name avatar");
-  const groups = chats.map(({members, _id, groupChat, name})=>({
-    _id,
-    groupChat,
-    name,
-    avatar: members.slice(0,3).map(({avatar}) => avatar.url)
-  }));
+  try {
+    const chats = await Chat.find({
+      members: req.user,
+      groupChat: true,
+      creator: req.user
+    }).populate("members", "name avatar");
+    
+    const groups = chats.map(({ members, _id, groupChat, name, habit, groupImage, groupDescription, activityDuration, monetaryPotAmount }) => ({
+      _id,
+      groupChat,
+      name,
+      habit,
+      groupImage,
+      groupDescription,
+      activityDuration,
+      monetaryPotAmount,
+      avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
+    }));
 
-  return res.status(200).json({
-    success: true,
-    groups
-  });
+    return res.status(200).json({
+      success: true,
+      groups
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error"
+    });
+  }
 };
 
 exports.addMembers = async (req, res, next) => {

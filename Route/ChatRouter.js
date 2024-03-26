@@ -1,5 +1,7 @@
 const express = require("express");
+const multer = require('multer');
 const {
+  uploadFile,
   newGroupChat,
   getMyChat,
   getMyGroups,
@@ -15,6 +17,10 @@ const {
 const { isAuthJWT, authorizeRoles } = require("../Utils/jwt");
 const { attachmentsMulter } = require("../Utils/multer");
 const router = express.Router();
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+router.route("/uploadFile").post(isAuthJWT, upload.single('file'), uploadFile);
 
 router.route("/new").post(isAuthJWT, newGroupChat);
 router.route("/my").get(isAuthJWT, getMyChat);

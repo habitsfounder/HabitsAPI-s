@@ -9,6 +9,13 @@ const chatSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    groupImage: {
+      type: String,
+    },
+    groupDescription: {
+      type: String,
+      default: null,
+    },
     creator: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -19,6 +26,17 @@ const chatSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    habit: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Habit",
+    },
+    activityDuration: {
+      type: Date,
+    },
+    monetaryPotAmount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

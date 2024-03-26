@@ -17,8 +17,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use('/api/adminauth', require('./Route/AdminRoute'));
-app.use('/api/userauth', require('./Route/UserRoute'))
-app.use('/api/chat', require('./Route/ChatRouter'))
+app.use('/api/userauth', require('./Route/UserRoute'));
+app.use('/api/chat', require('./Route/ChatRouter'));
+app.use('/api/habit', require('./Route/HabitsRoute'));
 
 const connectDB = require("./Utils/db");
 
