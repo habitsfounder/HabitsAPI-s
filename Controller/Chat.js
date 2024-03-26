@@ -5,7 +5,6 @@ const { ALERT, REFETCH_CHATS, NEW_ATTACHMENT, NEW_MESSAGE_ALERT } = require("../
 const { getOtherMember } = require("../Utils/helper");
 const User = require("../Model/User");
 const Message = require("../Model/Message");
-const uploadOnS3 = require("../Utils/awsS3");
 
 const HttpStatus = {
   OK: 200,
