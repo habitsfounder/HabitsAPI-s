@@ -124,18 +124,26 @@ exports.getMyGroups = async (req, res, next) => {
       groupChat: true,
       creator: req.user
     }).populate("members", "name avatar");
+
+    const currentDate = new Date();
     
-    const groups = chats.map(({ members, _id, groupChat, name, habit, groupImage, groupDescription, activityDuration, monetaryPotAmount }) => ({
-      _id,
-      groupChat,
-      name,
-      habit,
-      groupImage,
-      groupDescription,
-      activityDuration,
-      monetaryPotAmount,
-      avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
-    }));
+    const groups = chats.map(({ members, _id, groupChat, name, habit, groupImage, groupDescription, activityDuration, monetaryPotAmount }) => {
+      const activityEndDate = new Date(activityDuration); // Convert activityDuration to a Date object
+      const daysLeft = Math.ceil((activityEndDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
+
+      return {
+        _id,
+        groupChat,
+        name,
+        habit,
+        groupImage,
+        groupDescription,
+        activityDuration,
+        monetaryPotAmount,
+        daysLeft,
+        avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
+      };
+    });
 
     return res.status(200).json({
       success: true,
@@ -448,7 +456,7 @@ exports.getMessages = async (req, res, next) => {
     Message.countDocuments({ chat: chatId }),
   ]);
 
-  const totalPages = Math.ceil(totalMessagesCount / limit);
+  const totalPages = Math.ceil(totalMessagesCount / limit) || 0;
 
   return res.status(200).json({
     success: true,

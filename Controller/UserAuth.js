@@ -3,8 +3,11 @@ const uploadOnS3 = require("../Utils/awsS3");
 const bcrypt = require("bcrypt");
 const { generateToken, verifyToken } = require("../Utils/jwt");
 const User = require("../Model/User");
+const Request = require("../Model/Request");
+const Chat = require("../Model/Chat")
 const sendEmail = require("../Utils/SendEmail");
-// const CsvParser = require("json2csv").Parser;
+const { ALERT, REFETCH_CHATS, NEW_ATTACHMENT, NEW_MESSAGE_ALERT, NEW_REQUEST } = require("../constants/events");
+const { emitEvent } = require("../Utils/jwt");
 
 const HttpStatus = {
   OK: 200,
@@ -481,4 +484,128 @@ exports.getMyProfile = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+exports.sendFriendRequest = async (req, res) => {
+  const { userId } = req.body;
+  const request = await Request.findOne({
+    $or: [
+      {sender: req.user._id, receiver: userId},
+      {sender: userId, receiver: req.user._id}
+    ]
+  });
+
+  if(request) {
+    res.status(400).json({
+      success: false,
+      error: "Request already sent",
+    });
+  }
+  await Request.create({
+    sender: req.user._id,
+    receiver: userId
+  });
+
+  emitEvent(req,NEW_REQUEST, [userId]);
+  
+  return res.status(200).json({
+    success: true,
+    error: "Friend Request Sent",
+  });
+};
+exports.acceptFriendRequest = async (req, res) => {
+  const { requestId, accept } = req.body;
+  const request = await Request.findById(requestId).populate("sender", "name").populate("receiver", "name");
+
+  if(!request) {
+    res.status(400).json({
+      success: false,
+      error: "Request not found",
+    });
+  }
+
+  if(request.receiver._id.toString() !== req.user._id.toString()){
+    return res.status(401).json({
+      success: false,
+      error: "You are not authorized to accept this request",
+    });
+  }
+
+  if(!accept){
+    await request.deleteOne();
+    return res.status(200).json({
+      success: true,
+      error: "Friend Request Rejected",
+    });
+  }
+
+  const members = [request.sender._id, request.receiver._id];
+
+  await Promise.all([
+    Chat.create({
+      members,
+      name: `${request.sender.name}-${request.receiver.name}`
+    }),
+    request.deleteOne()
+  ]);
+
+  emitEvent(req,REFETCH_CHATS, members);
+  
+  return res.status(200).json({
+    success: true,
+    error: "Friend Request Accepted",
+    senderId: request.sender._id
+  });
+};
+
+exports.getMyNotification = async (req, res) => {
+  const requests = await Request.find({receiver: req.user._id}).populate("sender", "name avatar")
+
+  const allRequests = requests.map(({_id, sender}) => ({
+    _id,
+    sender: {
+      _id: sender._id,
+      name: sender.name,
+      avatar: sender.avatar.url
+  }
+  }))
+
+  // if(!request) {
+  //   res.status(400).json({
+  //     success: false,
+  //     error: "Request not found",
+  //   });
+  // }
+
+  // if(request.receiver.toString() !== req.user._id.toString()){
+  //   return res.status(401).json({
+  //     success: false,
+  //     error: "You are not authorized to accept this request",
+  //   });
+  // }
+
+  // if(!accept){
+  //   await request.deleteOne();
+  //   return res.status(200).json({
+  //     success: true,
+  //     error: "Friend Request Rejected",
+  //   });
+  // }
+
+  // const members = [request.sender._id, request.receiver._id];
+
+  // await Promise.all([
+  //   Chat.create({
+  //     members,
+  //     name: `${request.sender.name}-${request.receiver.name}`
+  //   }),
+  //   request.deleteOne()
+  // ]);
+
+  // emitEvent(req,REFETCH_CHATS, members);
+  
+  return res.status(200).json({
+    success: true,
+    allRequests
+  });
 }
