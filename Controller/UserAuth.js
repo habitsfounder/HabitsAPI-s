@@ -8,6 +8,7 @@ const Chat = require("../Model/Chat")
 const sendEmail = require("../Utils/SendEmail");
 const { ALERT, REFETCH_CHATS, NEW_ATTACHMENT, NEW_MESSAGE_ALERT, NEW_REQUEST } = require("../constants/events");
 const { emitEvent } = require("../Utils/jwt");
+const { getOtherMember } = require("../Utils/helper");
 
 const HttpStatus = {
   OK: 200,
@@ -515,7 +516,10 @@ exports.sendFriendRequest = async (req, res) => {
 };
 exports.acceptFriendRequest = async (req, res) => {
   const { requestId, accept } = req.body;
-  const request = await Request.findById(requestId).populate("sender", "name").populate("receiver", "name");
+  
+  const request = await Request.findById(requestId)
+    .populate("sender", "name")
+    .populate("receiver", "name");
 
   if(!request) {
     res.status(400).json({
@@ -559,53 +563,61 @@ exports.acceptFriendRequest = async (req, res) => {
 };
 
 exports.getMyNotification = async (req, res) => {
-  const requests = await Request.find({receiver: req.user._id}).populate("sender", "name avatar")
+  const requests = await Request.find({ receiver: req.user }).populate(
+    "sender",
+    "name avatar"
+  );
 
-  const allRequests = requests.map(({_id, sender}) => ({
+  const allRequests = requests.map(({ _id, sender }) => ({
     _id,
     sender: {
       _id: sender._id,
       name: sender.name,
-      avatar: sender.avatar.url
-  }
-  }))
+      avatar: sender.avatar.url,
+    },
+  }));
 
-  // if(!request) {
-  //   res.status(400).json({
-  //     success: false,
-  //     error: "Request not found",
-  //   });
-  // }
-
-  // if(request.receiver.toString() !== req.user._id.toString()){
-  //   return res.status(401).json({
-  //     success: false,
-  //     error: "You are not authorized to accept this request",
-  //   });
-  // }
-
-  // if(!accept){
-  //   await request.deleteOne();
-  //   return res.status(200).json({
-  //     success: true,
-  //     error: "Friend Request Rejected",
-  //   });
-  // }
-
-  // const members = [request.sender._id, request.receiver._id];
-
-  // await Promise.all([
-  //   Chat.create({
-  //     members,
-  //     name: `${request.sender.name}-${request.receiver.name}`
-  //   }),
-  //   request.deleteOne()
-  // ]);
-
-  // emitEvent(req,REFETCH_CHATS, members);
-  
   return res.status(200).json({
     success: true,
     allRequests
   });
+}
+
+exports.getMyFriends = async (req, res) => {
+  const chatId = req.params.chatId;
+
+  const chats = await Chat.find({
+    members: req.user,
+    groupChat: false,
+  }).populate("members", "name avatar");
+
+  const friends = chats.map(({members}) => {
+    const otherUser = getOtherMember(members, req.user);
+
+    return{
+      _id : otherUser._id,
+      name: otherUser.name,
+      avatar: otherUser.avatar.url
+    }
+  });
+
+  if(chatId){
+
+    const chat = await Chat.findById(chatId);
+
+    const availableFriends = friends.filter(
+      (friend) => !chat.members.includes(friend._id)
+    );
+
+    return res.status(200).json({
+      success: true,
+      friends: availableFriends
+    });
+
+  } else {
+    return res.status(200).json({
+      success: true,
+      friends
+    })
+  }
 }

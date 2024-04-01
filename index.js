@@ -1,27 +1,128 @@
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const express = require("express");
-const path = require("path");
-const app = express();
+// const path = require("path");
+const cookieParser = require("cookie-parser")
+const { Server } = require("socket.io");
+const { createServer } = require("http");
+const { getSockets } = require("./Utils/helper.js");
+const { v4: uuid } = require('uuid');
+const Message  = require("./Model/Message");
+const { corsOptions } = require("./constants/config.js");
+const { socketAuthenticator } = require("./Utils/jwt.js");
+const {connectDB} = require("./Utils/db")
+const {
+  CHAT_JOINED,
+  CHAT_LEAVED,
+  NEW_MESSAGE,
+  NEW_MESSAGE_ALERT,
+  ONLINE_USERS,
+  START_TYPING,
+  STOP_TYPING,
+} = require("./constants/events.js");
 
+const app = express();
 require("dotenv").config();
+
+connectDB();
+
+const userSocketIDs = new Map();
+const onlineUsers = new Set();
+
+const server = createServer(app);
+const io = new Server(server, {
+  cors: corsOptions,
+});
+
+app.set("io", io);
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "500kb", extended: true }));
 app.use(bodyParser.urlencoded({ extended: true }));
-const corsOptions = {
-  origin: ["http://localhost:3000", "*"],
-  credentials: true,
-};
-
-// app.use(cors());
 app.use(cors(corsOptions));
 
-app.use('/api/adminauth', require('./Route/AdminRoute'));
-app.use('/api/userauth', require('./Route/UserRoute'));
-app.use('/api/chat', require('./Route/ChatRouter'));
-app.use('/api/habit', require('./Route/HabitsRoute'));
+// Routes
+app.use("/api/adminauth", require("./Route/AdminRoute"));
+app.use("/api/userauth", require("./Route/UserRoute"));
+app.use("/api/chat", require("./Route/ChatRouter"));
+app.use("/api/habit", require("./Route/HabitsRoute"));
+app.use("/api/methods", require("./Route/VerificationMethodRoute"));
 
-const connectDB = require("./Utils/db");
+io.use((socket, next) => {
+  cookieParser()(
+    socket.request,
+    socket.request.res,
+    async (err) => await socketAuthenticator(err, socket, next)
+  );
+});
+
+io.on("connection", (socket) => {
+  console.log("A User Connecteddd", socket.id);
+  const user = socket.user;
+  userSocketIDs.set(user._id.toString(), socket.id);
+
+  socket.on(NEW_MESSAGE, async ({ chatId, members, message }) => {
+    const messageForRealTime = {
+      content: message,
+      _id: uuid(),
+      sender: {
+        _id: user._id,
+        name: user.name,
+      },
+      chat: chatId,
+      createdAt: new Date().toISOString(),
+    };
+
+    const messageForDB = {
+      content: message,
+      sender: user._id,
+      chat: chatId,
+    };
+
+    const membersSocket = getSockets(members);
+    io.to(membersSocket).emit(NEW_MESSAGE, {
+      chatId,
+      message: messageForRealTime,
+    });
+    io.to(membersSocket).emit(NEW_MESSAGE_ALERT, { chatId });
+
+    try {
+      await Message.create(messageForDB);
+    } catch (error) {
+      throw new Error(error);
+    }
+  });
+
+  socket.on(START_TYPING, ({ members, chatId }) => {
+    const membersSockets = getSockets(members);
+    socket.to(membersSockets).emit(START_TYPING, { chatId });
+  });
+
+  socket.on(STOP_TYPING, ({ members, chatId }) => {
+    const membersSockets = getSockets(members);
+    socket.to(membersSockets).emit(STOP_TYPING, { chatId });
+  });
+
+  socket.on(CHAT_JOINED, ({ userId, members }) => {
+    onlineUsers.add(userId.toString());
+
+    const membersSocket = getSockets(members);
+    io.to(membersSocket).emit(ONLINE_USERS, Array.from(onlineUsers));
+  });
+
+  socket.on(CHAT_LEAVED, ({ userId, members }) => {
+    onlineUsers.delete(userId.toString());
+
+    const membersSocket = getSockets(members);
+    io.to(membersSocket).emit(ONLINE_USERS, Array.from(onlineUsers));
+  });
+
+  socket.on("disconnect", () => {
+    userSocketIDs.delete(user._id.toString());
+    onlineUsers.delete(user._id.toString());
+    socket.broadcast.emit(ONLINE_USERS, Array.from(onlineUsers));
+  });
+});
 
 // if (process.env.NODE_ENV === "dev") {
 //   //replaced "production" with "dev"
@@ -142,6 +243,8 @@ const connectDB = require("./Utils/db");
 
 const PORT = process.env.PORT || 4000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Running on port ${PORT}`);
 });
+
+module.exports = { userSocketIDs };

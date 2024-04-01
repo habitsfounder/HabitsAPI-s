@@ -30,7 +30,14 @@ const chatSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Habit",
     },
-    activityDuration: {
+    habit_verification_method: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Verification",
+    },
+    activityStartDate: {
+      type: Date,
+    },
+    activityEndDate: {
       type: Date,
     },
     monetaryPotAmount: {

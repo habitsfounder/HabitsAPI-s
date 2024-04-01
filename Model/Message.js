@@ -1,22 +1,18 @@
 const mongoose = require("mongoose");
 
+const attachmentSchema = new mongoose.Schema({
+  public_id: {
+    type: String,
+  },
+  url: {
+    type: String,
+  },
+});
+
 const messageSchema = new mongoose.Schema(
   {
-    content: {
-      type: String
-    },
-    attachments: [
-      {
-        public_id: {
-          type: String,
-          required: true,
-        },
-        url: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
+    content: String,
+    attachments: [attachmentSchema],
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

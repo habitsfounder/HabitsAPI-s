@@ -6,30 +6,41 @@ const { getOtherMember } = require("../Utils/helper");
 const User = require("../Model/User");
 const Message = require("../Model/Message");
 
-const HttpStatus = {
-  OK: 200,
-  INVALID: 201,
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  SERVER_ERROR: 500,
-  NOT_FOUND: 404,
-};
-const StatusMessage = {
-  INVALID_CREDENTIALS: "Invalid credentials.",
-  INVALID_EMAIL_PASSWORD: "Please provide email and password.",
-  USER_NOT_FOUND: "User not found.",
-  SERVER_ERROR: "Server error.",
-  MISSING_DATA: "Please provide all necessary user details.",
-  DUPLICATE_DATA: "Data already exists.",
-  DUPLICATE_EMAIL: "Email already exists.",
-  DUPLICATE_CONTACT: "Contact number already exists.",
-  USER_DELETED: "Deleted successfully.",
-  UNAUTHORIZED_ACCESS: "Unauthorized access.",
-  USER_UPDATED: "User updated successfully.",
-  MISSING_PAGE_PARAMS: "Please provide page number and limit.",
-  SAVED_SUCC: "Saved Successfully!",
-  NOT_FOUND: "Data not found.",
-};
+const AWS = require('aws-sdk');
+
+AWS.config.update({
+  accessKeyId: process.env.AWS_ACCESS_KEY,
+  secretAccessKey: process.env.AWS_SECRET_KEY,
+  region: process.env.REGION,
+});
+
+const s3 = new AWS.S3();
+function uploadFilee(file, filename) {
+  var date = new Date();
+  var parentFolder = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
+
+  const params = {
+      Bucket: process.env.BUCKET,
+      Key: parentFolder + '/' + filename,
+      Body: file,
+  };
+  
+  return new Promise(function (resolve, reject) {
+      s3.upload(params, function (err, data) {
+          if (err) {
+              console.log('Error =>' + err);
+              reject(err);
+          }
+          if (data != null) {
+              console.log('Image', 'uploadOnS3' + data.Location);
+              resolve({ // Resolve with an object containing public_id and url
+                  public_id: data.Key,
+                  url: data.Location
+              });
+          }
+      });
+  });
+}
 
 exports.uploadFile = async (req, res, next) => {
   try {
@@ -49,7 +60,7 @@ exports.uploadFile = async (req, res, next) => {
 };
 
 exports.newGroupChat = async (req, res, next) => {
-  const { name, members, habit, groupImage, groupDescription, activityDuration, monetaryPotAmount } = req.body;
+  const { name, members, habit, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate,monetaryPotAmount } = req.body;
   try {
     if (members.length < 2) {
       return res.status(400).json({
@@ -66,9 +77,11 @@ exports.newGroupChat = async (req, res, next) => {
       creator: req.user,
       members: allMembers,
       habit,
+      habit_verification_method,
       groupImage,
       groupDescription,
-      activityDuration,
+      activityStartDate,
+      activityEndDate,
       monetaryPotAmount,
     });
 
@@ -119,26 +132,51 @@ exports.getMyChat = async (req, res ,next) => {
 
 exports.getMyGroups = async (req, res, next) => {
   try {
-    const chats = await Chat.find({
-      members: req.user,
-      groupChat: true,
-      creator: req.user
-    }).populate("members", "name avatar");
+    let query = {};
+    const { searchQuery } = req.query;
+
+    if (searchQuery) {
+      const userId = req.user;
+      query = {
+        $or: [
+          { members: userId }, // Search groups where the user is a member
+          { creator: userId } // Search groups created by the user
+        ],
+        $and: [
+          { groupChat: true }, // Must be a group chat
+          {
+            $or: [
+              { name: { $regex: new RegExp(searchQuery, "i") } },
+              { groupDescription: { $regex: new RegExp(searchQuery, "i") } }
+            ]
+          }
+        ]
+      };
+    } else {
+      query = {
+        members: req.user,
+        groupChat: true,
+        creator: req.user
+      };
+    }
+
+    const chats = await Chat.find(query).populate("members", "name avatar");
 
     const currentDate = new Date();
-    
-    const groups = chats.map(({ members, _id, groupChat, name, habit, groupImage, groupDescription, activityDuration, monetaryPotAmount }) => {
-      const activityEndDate = new Date(activityDuration); // Convert activityDuration to a Date object
-      const daysLeft = Math.ceil((activityEndDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
+    const groups = chats.map(({ members, _id, groupChat, name, habit, habit_verification_method,groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount }) => {
+      const endDate = new Date(activityEndDate);
+      const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
 
       return {
         _id,
         groupChat,
         name,
         habit,
+        habit_verification_method,
         groupImage,
         groupDescription,
-        activityDuration,
+        activityStartDate,
+        activityEndDate,
         monetaryPotAmount,
         daysLeft,
         avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
@@ -303,6 +341,11 @@ exports.sendAttachments = async (req, res, next) => {
   }
 
   const attachments = [];
+  // Upload each file and collect their URLs
+  for (const file of files) {
+    const url = await uploadFilee(file.buffer, file.originalname);
+    attachments.push(url);
+  }
 
   const messageForDB = { content:"", attachments, sender: me._id, chat: chatId};
 

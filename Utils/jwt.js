@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
 const User = require("../Model/User");
 const Admin = require("../Model/Admin");
-
+const {ErrorHandler} = require("../Utils/utility");
+const {getSockets} = require("../Utils/helper")
 exports.generateToken = (payload) => {
   console.log(payload);
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
@@ -83,6 +84,45 @@ exports.authorizeRoles = (...roles) => {
     next();
   };
 };
+
+exports.socketAuthenticator = async (err, socket, next) => {
+  try {
+    if (err) return next(err);
+
+    
+    const authHeader = socket.request.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      // return next(new ErrorHandler("Please provide a valid authorization token", 401));
+      return res.status(401).json("Please provide a valid authorization token");
+    }
+
+    const token = authHeader.split(" ")[1]; // Extract token from the Authorization header
+
+    if (!token) {
+      return next(new ErrorHandler("Please provide a valid authorization token", 401));
+    }
+
+    const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById({ _id: decodedData?.id });
+
+    if (!user)
+      return next(new ErrorHandler("Please login to access this route", 401));
+
+    socket.user = user;
+
+    return next();
+  } catch (error) {
+    console.log(error);
+    return next(new ErrorHandler("Please login to access this route", 401));
+  }
+};
+
 exports.emitEvent = (req, event, users, data) => {
-  console.log("Emiting Event" ,event);
+  // console.log("Emiting Event" ,event);
+  const io = req.app.get("io");
+  const usersSocket = getSockets(users);
+  console.log(usersSocket);
+  io.to(usersSocket).emit(event, data);
 };
