@@ -3,6 +3,8 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:4173",
     "http://localhost:3000",
+    "http://44.199.75.133:4000",
+    "http://44.199.75.133"
     // process.env.CLIENT_URL,
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
