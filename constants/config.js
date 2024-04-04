@@ -5,7 +5,10 @@ const corsOptions = {
     "http://localhost:4173",
     "http://localhost:3000",
     "http://44.199.75.133:4000",
-    "http://44.199.75.133"
+    "http://44.199.75.133",
+    "ws://myserver.mydomain.com:3000",
+    "http://myserver.mydomain.com:3000",
+    "https://myserver.mydomain.com:3000"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
