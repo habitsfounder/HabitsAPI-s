@@ -322,57 +322,93 @@ exports.getUserById = async (req, res) => {
 };
 
 exports.loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  // const { email, password } = req.body;
 
-  try {
-    if (!email) {
-      return res.status(401).json({ success: false, error: "Email not found" });
+  // try {
+  //   if (!email) {
+  //     return res.status(401).json({ success: false, error: "Email not found" });
+  //   }
+
+  //   const findUser = await User.findOne({ email }).select("+password");
+
+  //   if (!findUser) {
+  //     return res.status(401).json({ success: false, error: "User not found" });
+  //   }
+
+  //   if (findUser.password) {
+  //     // If password is not provided for a local user
+  //     if (!password) {
+  //       return res.status(401).json({ success: false, error: "Password is required" });
+  //     }
+
+  //     // Check if the provided password matches the stored password
+  //     if (!(await findUser.matchPasswords(password))) {
+  //       return res.status(401).json({ success: false, error: "Invalid credentials" });
+  //     }
+  //   } else {
+  //     if (!findUser.provider) {
+  //       return res.status(401).json({ success: false, error: "Invalid user" });
+  //     }
+  //   }
+
+  //   const token = generateToken({ id: findUser._id });
+    
+  //   await User.findByIdAndUpdate(
+  //     { _id: findUser._id?.toString() },
+  //     { activeToken: token },
+  //     { new: true }
+  //   );
+
+  //   const user = {
+  //     _id: findUser._id,
+  //     name: findUser.name,
+  //     email: findUser.email,
+  //     contact: findUser.contact,
+  //     provider: findUser.provider,
+  //     activeToken: findUser.activeToken
+  //   };
+
+  //   return res.status(200).json({ success: true, user, token });
+  // } catch (error) {
+  //   console.error("Error:", error);
+  //   res.status(500).json({ success: false, error: "Internal server error" });
+  // }
+    const { email, password, provider_ID } = req.body;
+    
+    if (!email || (!password && !provider_ID)) {
+      return res.status(400).json({ success: false, error: "Please provide email and password/provider ID" });
     }
-
-    const findUser = await User.findOne({ email }).select("+password");
-
-    if (!findUser) {
-      return res.status(401).json({ success: false, error: "User not found" });
-    }
-
-    if (findUser.password) {
-      // If password is not provided for a local user
-      if (!password) {
-        return res.status(401).json({ success: false, error: "Password is required" });
+  
+    try {
+      const userQuery = User.findOne({ email }).select("+password");
+      // const populateOptions = ["wishlist", "preference"];
+      // populateOptions.forEach(option => userQuery.populate(option));
+      const findUser = await userQuery;
+  
+      if (!findUser) {
+        return res.status(401).json({ success: false, error: "Invalid credentials or user is blocked" });
       }
-
-      // Check if the provided password matches the stored password
-      if (!(await findUser.matchPasswords(password))) {
+  
+      const isValidLogin = password ? await findUser.matchPasswords(password) : findUser.provider_ID === provider_ID;
+      if (!isValidLogin) {
         return res.status(401).json({ success: false, error: "Invalid credentials" });
       }
-    } else {
-      if (!findUser.provider) {
-        return res.status(401).json({ success: false, error: "Invalid user" });
-      }
+  
+      const token = generateToken({ id: findUser.id });
+      await User.findByIdAndUpdate(findUser._id, { activeToken: token, lastLogin: Date.now() });
+  
+      res.status(200).json({
+        success: true,
+        user: {
+          findUser,
+          token
+        }
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
-
-    const token = generateToken({ id: findUser._id });
-    
-    await User.findByIdAndUpdate(
-      { _id: findUser._id?.toString() },
-      { activeToken: token },
-      { new: true }
-    );
-
-    const user = {
-      _id: findUser._id,
-      name: findUser.name,
-      email: findUser.email,
-      contact: findUser.contact,
-      provider: findUser.provider,
-      activeToken: findUser.activeToken
-    };
-
-    return res.status(200).json({ success: true, user, token });
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ success: false, error: "Internal server error" });
-  }
+  
 };
 
 exports.logoutUser = async (req, res) => {

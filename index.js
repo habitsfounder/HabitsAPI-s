@@ -47,6 +47,8 @@ app.use("/api/userauth", require("./Route/UserRoute"));
 app.use("/api/chat", require("./Route/ChatRouter"));
 app.use("/api/habit", require("./Route/HabitsRoute"));
 app.use("/api/methods", require("./Route/VerificationMethodRoute"));
+app.use("/api/activityLogs", require("./Route/ActivityLogsRoute.js"));
+app.use("/api/wallet", require("./Route/WalletTransRoute"));
 
 io.use((socket, next) => {
   cookieParser()(

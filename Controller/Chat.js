@@ -60,7 +60,7 @@ exports.uploadFile = async (req, res, next) => {
 };
 
 exports.newGroupChat = async (req, res, next) => {
-  const { name, members, habit, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate,monetaryPotAmount } = req.body;
+  const { name, members, habit, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate,monetaryPotAmount,max_points} = req.body;
   try {
     if (members.length < 2) {
       return res.status(400).json({
@@ -83,6 +83,7 @@ exports.newGroupChat = async (req, res, next) => {
       activityStartDate,
       activityEndDate,
       monetaryPotAmount,
+      max_points
     });
 
     emitEvent(req, ALERT, allMembers, `Welcome to ${name} Group`);
@@ -94,6 +95,49 @@ exports.newGroupChat = async (req, res, next) => {
     });
   } catch (error) {
     console.log(error);
+  }
+};
+
+exports.updateGroupChat = async (req, res, next) => {
+  const { groupId } = req.params;
+  const { name, members, habit, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, money_transferred, max_points, winner_user} = req.body;
+  try {
+    const updatedFields = {
+      name,
+      habit,
+      habit_verification_method,
+      groupImage,
+      groupDescription,
+      activityStartDate,
+      activityEndDate,
+      monetaryPotAmount,
+      money_transferred,
+      max_points,
+      winner_user
+    };
+
+    const updatedGroup = await Chat.findByIdAndUpdate(groupId, updatedFields, { new: true });
+
+    if (!updatedGroup) {
+      return res.status(404).json({
+        success: false,
+        error: "Group not found",
+      });
+    }
+
+    emitEvent(req, REFETCH_CHATS, members);
+
+    return res.status(200).json({
+      success: true,
+      message: "Group Updated",
+      group: updatedGroup,
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error",
+    });
   }
 };
 
@@ -160,10 +204,14 @@ exports.getMyGroups = async (req, res, next) => {
       };
     }
 
-    const chats = await Chat.find(query).populate("members", "name avatar");
+    const chats = await Chat.find(query)
+      .populate("members", "name avatar")
+      .populate("habit")
+      .populate("winner_user")
+      .populate("habit_verification_method");
 
     const currentDate = new Date();
-    const groups = chats.map(({ members, _id, groupChat, name, habit, habit_verification_method,groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount }) => {
+    const groups = chats.map(({ members, _id, groupChat, name, habit, habit_verification_method,groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user}) => {
       const endDate = new Date(activityEndDate);
       const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
 
@@ -178,7 +226,10 @@ exports.getMyGroups = async (req, res, next) => {
         activityStartDate,
         activityEndDate,
         monetaryPotAmount,
+        mooney_transferred,
         daysLeft,
+        max_points,
+        winner_user,
         avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
       };
     });

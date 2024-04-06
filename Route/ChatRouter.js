@@ -4,6 +4,7 @@ const {
   uploadFile,
   newGroupChat,
   getMyChat,
+  updateGroupChat,
   getMyGroups,
   addMembers,
   removeMember,
@@ -23,6 +24,7 @@ const upload = multer({ storage: storage });
 router.route("/uploadFile").post(isAuthJWT, upload.single('file'), uploadFile);
 
 router.route("/new").post(isAuthJWT, newGroupChat);
+router.route("/updateGroup/:groupId").put(isAuthJWT, updateGroupChat);
 router.route("/my").get(isAuthJWT, getMyChat);
 router.route("/my/groups").get(isAuthJWT, getMyGroups);
 router.route("/addMembers").put(isAuthJWT, addMembers);

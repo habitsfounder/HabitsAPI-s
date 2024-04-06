@@ -26,10 +26,12 @@ const chatSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    habit: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Habit",
-    },
+    habit: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Habit",
+      }
+    ],
     habit_verification_method: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Verification",
@@ -44,6 +46,17 @@ const chatSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    money_transferred: {
+      type: Boolean,
+      default: false,
+    },
+    max_points: {
+      type: String,
+    },
+    winner_user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    }
   },
   {
     timestamps: true,

@@ -48,6 +48,9 @@ const userSchema = new mongoose.Schema({
   resetToken: {
     type: String,
   },
+  lastLogin: {
+    type: Date
+  }
 });
 
 userSchema.pre("save", async function (next) {
