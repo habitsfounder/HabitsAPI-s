@@ -19,4 +19,10 @@ router.put('/updateLog/:id',isAuthJWT, activityLogController.updateActivityLog);
 // Delete activity log by ID
 router.delete('/deleteLog/:id',isAuthJWT, activityLogController.deleteActivityLog);
 
+router.get('/progressInfo',isAuthJWT, activityLogController.progressInfo);
+
+router.get('/habitsInProgress',isAuthJWT, activityLogController.habitsInProgress);
+
+router.get('/otherUsersActivityLogs',isAuthJWT, activityLogController.otherUsersActivityLogs);
+
 module.exports = router;

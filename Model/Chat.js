@@ -26,16 +26,34 @@ const chatSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    habit: [
+    habits: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Habit",
-      }
+        habit: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Habit",
+        },
+        verification: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Verification",
+        },
+        quantity: {
+          type: String,
+        },
+        unit: {
+          type: String,
+        },
+        of: {
+          type: String,
+        },
+        for: {
+          type: Number,
+        },
+      },
     ],
-    habit_verification_method: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Verification",
-    },
+    // habit_verification_method: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "Verification",
+    // },
     activityStartDate: {
       type: Date,
     },
@@ -52,11 +70,12 @@ const chatSchema = new mongoose.Schema(
     },
     max_points: {
       type: String,
+      default: "100",
     },
     winner_user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-    }
+    },
   },
   {
     timestamps: true,

@@ -5,6 +5,7 @@ const { ALERT, REFETCH_CHATS, NEW_ATTACHMENT, NEW_MESSAGE_ALERT } = require("../
 const { getOtherMember } = require("../Utils/helper");
 const User = require("../Model/User");
 const Message = require("../Model/Message");
+const Verification = require("../Model/VerificationMethod");
 
 const AWS = require('aws-sdk');
 
@@ -60,7 +61,7 @@ exports.uploadFile = async (req, res, next) => {
 };
 
 exports.newGroupChat = async (req, res, next) => {
-  const { name, members, habit, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate,monetaryPotAmount,max_points} = req.body;
+  const { name, members, habits, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate,monetaryPotAmount,max_points} = req.body;
   try {
     if (members.length < 2) {
       return res.status(400).json({
@@ -76,7 +77,7 @@ exports.newGroupChat = async (req, res, next) => {
       groupChat: true,
       creator: req.user,
       members: allMembers,
-      habit,
+      habits,
       habit_verification_method,
       groupImage,
       groupDescription,
@@ -203,15 +204,33 @@ exports.getMyGroups = async (req, res, next) => {
         creator: req.user
       };
     }
-
+      // .populate("members", "name avatar")
+      // .populate("habit")
+      // .populate("winner_user")
+      // .populate("habit_verification_method");
     const chats = await Chat.find(query)
-      .populate("members", "name avatar")
-      .populate("habit")
-      .populate("winner_user")
-      .populate("habit_verification_method");
-
+    .populate({
+      path: "members",
+      select: "name avatar",
+    })
+    .populate({
+      path: "habits",
+      populate: {
+        path: "habit verification",
+        models: {
+          path: "Habit",
+          model: "Habit",
+        },
+        models: {
+          path: "Verification",
+          model: "Verification",
+        },
+      },
+    })    
+    .populate("winner_user");
+    
     const currentDate = new Date();
-    const groups = chats.map(({ members, _id, groupChat, name, habit, habit_verification_method,groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user}) => {
+    const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user}) => {
       const endDate = new Date(activityEndDate);
       const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
 
@@ -219,8 +238,8 @@ exports.getMyGroups = async (req, res, next) => {
         _id,
         groupChat,
         name,
-        habit,
-        habit_verification_method,
+        habits,
+        // habit_verification_method,
         groupImage,
         groupDescription,
         activityStartDate,

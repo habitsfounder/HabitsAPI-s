@@ -1,6 +1,7 @@
 const ActivityLog = require("../Model/ActivityLogs");
 const Chat = require("../Model/Chat");
-const User = require("../Model/User")
+const User = require("../Model/User");
+const Habit = require("../Model/Habits")
 // Create a new activity log
 exports.createActivityLog = async (req, res, next) => {
     try {
@@ -152,3 +153,71 @@ exports.getGroupPoints = async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+exports.progressInfo = async (req,res) => {
+  try {
+    // Get user's active groups
+    const activeGroups = await Chat.find({ members: req.user.id });
+
+    // Calculate max_progress for today
+    const today = new Date();
+    const maxProgressPromises = activeGroups.map(async (group) => {
+      const maxPoints = parseInt(group.max_points);
+      const daysChallengeWillGo = Math.ceil((group.activityEndDate - group.activityStartDate) / (1000 * 60 * 60 * 24));
+      const maxProgress = maxPoints / daysChallengeWillGo;
+      return maxProgress;
+    });
+    const maxProgressValues = await Promise.all(maxProgressPromises);
+    const maxProgress = maxProgressValues.reduce((acc, val) => acc + val, 0);
+
+    // Get today's activity logs for the user
+    const todayActivityLogs = await ActivityLog.find({
+      user_id: req.user.id,
+      createdAt: { $gte: today.setHours(0, 0, 0, 0), $lt: today.setHours(23, 59, 59, 999) }
+    });
+
+    // Calculate done_progress for today
+    const doneProgress = todayActivityLogs.reduce((acc, log) => acc + parseInt(log.points_earned), 0);
+
+    res.json({ success: true, data: { doneProgress, maxProgress } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+exports.habitsInProgress = async (req,res) => {
+  try {
+    // Get user's active groups
+    const activeGroups = await Chat.find({ members: req.user.id });
+
+    // Get habits in progress from all active groups
+    const habitsInProgress = [];
+    for (const group of activeGroups) {
+      const habits = await Habit.find({ _id: { $in: group.habits } });
+      habitsInProgress.push(...habits);
+    }
+
+    res.json({ success: true, data: habitsInProgress });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+}
+
+exports.otherUsersActivityLogs = async (req,res) => {
+  try {
+    // Get user's active groups
+    const activeGroups = await Chat.find({ members: req.user.id });
+
+    // Get other users' activity logs in the groups
+    const otherUsersActivityLogs = await ActivityLog.find({
+      user_id: { $ne: req.user.id },
+      chat_id: { $in: activeGroups.map(group => group._id) }
+    });
+
+    res.json({ success: true, data: otherUsersActivityLogs });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+}
