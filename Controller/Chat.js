@@ -6,6 +6,8 @@ const { getOtherMember } = require("../Utils/helper");
 const User = require("../Model/User");
 const Message = require("../Model/Message");
 const Verification = require("../Model/VerificationMethod");
+const Notification = require("../Model/notification");
+
 
 const AWS = require('aws-sdk');
 
@@ -72,7 +74,7 @@ exports.newGroupChat = async (req, res, next) => {
 
     const allMembers = [...members, req.user];
 
-    await Chat.create({
+  const new_data =  await Chat.create({
       name,
       groupChat: true,
       creator: req.user,
@@ -89,6 +91,57 @@ exports.newGroupChat = async (req, res, next) => {
 
     emitEvent(req, ALERT, allMembers, `Welcome to ${name} Group`);
     emitEvent(req, REFETCH_CHATS, members);
+
+
+console.log("groupdata", new_data._id);
+    var message = {
+      // to: manager.device_id,
+      to: '',
+      collapse_key: 'green',
+      notification: {
+        title: ' Habit App Notification ',
+        body: `Requested You to Join a New Habit Group`,
+  
+      },
+      data: {
+        "click_action": "FLUTTER_NOTIFICATION_CLICK",
+        'notification_type': 1,
+      },
+  
+    };
+
+  const add_notification = await Notification.create(
+          {
+            sender_id: req.user,
+            receiver_id: allMembers,
+            chat_id: new_data._id,
+            message: message.notification.body,
+            status: 1,
+          })
+  console.log("add_notification",add_notification);
+  
+    // fcm.send(message, function (err, response) {
+  
+    //   console.log("1", message);
+    //   if (err) {
+    //     console.log("Something Has Gone Wrong !");
+  
+    //   } else {
+    //     console.log("Successfully Sent With Resposne :", response);
+    //     var body = message.notification.body;
+    //     console.log("notification body for chat request<sent to gruop members>",body);
+    //     Notification.create(
+    //       {
+    //         creator_id: Newvalueid,
+    //         members_id: Check_id.vendor_id,
+    //         chat_id: Check_id.product_id,
+    //         message: body,
+    //         status: 1,
+    //       })
+    //   }
+  
+    //   //  console.log("2");
+    // })
 
     return res.status(201).json({
       success: true,
@@ -211,7 +264,7 @@ exports.getMyGroups = async (req, res, next) => {
     const chats = await Chat.find(query)
     .populate({
       path: "members",
-      select: "name avatar",
+      // select: "name avatar",
     })
     .populate({
       path: "habits",
@@ -239,6 +292,7 @@ exports.getMyGroups = async (req, res, next) => {
         groupChat,
         name,
         habits,
+        members,
         // habit_verification_method,
         groupImage,
         groupDescription,
@@ -249,7 +303,7 @@ exports.getMyGroups = async (req, res, next) => {
         daysLeft,
         max_points,
         winner_user,
-        avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
+        // avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
       };
     });
 

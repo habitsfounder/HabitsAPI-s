@@ -78,6 +78,11 @@ exports.addUser = async (req, res ,next) => {
 
   try {
     const newUser = await User.create(userData);
+    // console.log("newUser",newUser);
+    // console.log("newUser",newUser.id);
+    // console.log("newUser",newUser._id);
+
+
     // sendToken(newUser, 201, res);
     const token = generateToken({ id: newUser._id });
 
@@ -550,28 +555,33 @@ exports.sendFriendRequest = async (req, res) => {
     error: "Friend Request Sent",
   });
 };
+
 exports.acceptFriendRequest = async (req, res) => {
-  const { requestId, accept } = req.body;
+  const { requestId, status } = req.body;
   
   const request = await Request.findById(requestId)
     .populate("sender", "name")
     .populate("receiver", "name");
 
-  if(!request) {
-    res.status(400).json({
+  if (!request) {
+    return res.status(400).json({
       success: false,
       error: "Request not found",
     });
   }
 
-  if(request.receiver._id.toString() !== req.user._id.toString()){
-    return res.status(401).json({
-      success: false,
-      error: "You are not authorized to accept this request",
-    });
-  }
+  // Check if request.receiver is defined and request.receiver._id exists
 
-  if(!accept){
+//   if (!request.receiver || !request.receiver._id || request.receiver._id.toString() !== req.user._id.toString()) {
+//     return res.status(401).json({
+//       success: false,
+//       error: "You are not authorized to accept this request",
+//     });
+// }
+
+// const request11 = await Chat.findById({creator:request.sender._id})
+// console.log("request11",request11);
+  if (status !== 'accepted') {
     await request.deleteOne();
     return res.status(200).json({
       success: true,
@@ -581,7 +591,7 @@ exports.acceptFriendRequest = async (req, res) => {
 
   const members = [request.sender._id, request.receiver._id];
 
-  await Promise.all([
+ await Promise.all([
     Chat.create({
       members,
       name: `${request.sender.name}-${request.receiver.name}`
@@ -589,14 +599,23 @@ exports.acceptFriendRequest = async (req, res) => {
     request.deleteOne()
   ]);
 
-  emitEvent(req,REFETCH_CHATS, members);
+  emitEvent(req, REFETCH_CHATS, members);
+  
+  // Update the status of the request
+  // const updatedStatus = await Request.findByIdAndUpdate(
+  //   requestId,
+  //   { status: status }, // Updated status object
+  //   { new: true }
+  // );
+  // console.log("updatedStatus", updatedStatus);
   
   return res.status(200).json({
     success: true,
-    error: "Friend Request Accepted",
+    message: "Friend Request Accepted",
     senderId: request.sender._id
   });
 };
+
 
 exports.getMyNotification = async (req, res) => {
   const requests = await Request.find({ receiver: req.user }).populate(
