@@ -556,32 +556,30 @@ exports.sendFriendRequest = async (req, res) => {
   });
 };
 
+
+
 exports.acceptFriendRequest = async (req, res) => {
-  const { requestId, status } = req.body;
+  const { requestId, accept } = req.body;
   
   const request = await Request.findById(requestId)
     .populate("sender", "name")
     .populate("receiver", "name");
 
-  if (!request) {
-    return res.status(400).json({
+  if(!request) {
+    res.status(400).json({
       success: false,
       error: "Request not found",
     });
   }
 
-  // Check if request.receiver is defined and request.receiver._id exists
+  if(request.receiver._id.toString() !== req.user._id.toString()){
+    return res.status(401).json({
+      success: false,
+      error: "You are not authorized to accept this request",
+    });
+  }
 
-//   if (!request.receiver || !request.receiver._id || request.receiver._id.toString() !== req.user._id.toString()) {
-//     return res.status(401).json({
-//       success: false,
-//       error: "You are not authorized to accept this request",
-//     });
-// }
-
-// const request11 = await Chat.findById({creator:request.sender._id})
-// console.log("request11",request11);
-  if (status !== 'accepted') {
+  if(!accept){
     await request.deleteOne();
     return res.status(200).json({
       success: true,
@@ -591,7 +589,7 @@ exports.acceptFriendRequest = async (req, res) => {
 
   const members = [request.sender._id, request.receiver._id];
 
- await Promise.all([
+  await Promise.all([
     Chat.create({
       members,
       name: `${request.sender.name}-${request.receiver.name}`
@@ -599,23 +597,14 @@ exports.acceptFriendRequest = async (req, res) => {
     request.deleteOne()
   ]);
 
-  emitEvent(req, REFETCH_CHATS, members);
-  
-  // Update the status of the request
-  // const updatedStatus = await Request.findByIdAndUpdate(
-  //   requestId,
-  //   { status: status }, // Updated status object
-  //   { new: true }
-  // );
-  // console.log("updatedStatus", updatedStatus);
+  emitEvent(req,REFETCH_CHATS, members);
   
   return res.status(200).json({
     success: true,
-    message: "Friend Request Accepted",
+    error: "Friend Request Accepted",
     senderId: request.sender._id
   });
 };
-
 
 exports.getMyNotification = async (req, res) => {
   const requests = await Request.find({ receiver: req.user }).populate(
@@ -676,3 +665,51 @@ exports.getMyFriends = async (req, res) => {
     })
   }
 }
+
+exports.acceptRequest = async (req, res) => {
+  try {
+    const { requestId, status } = req.body;
+
+    // Find the request by its ID and populate sender and receiver details
+    const request = await Request.findById(requestId)
+      .populate("sender", "name")
+      .populate("receiver", "name");
+
+    // Check if the request exists
+    if (!request) {
+      return res.status(400).json({
+        success: false,
+        error: "Request not found",
+      });
+    }
+
+    // If the status is 'rejected', delete the request and send response
+    if (status === 'rejected') {
+      await request.deleteOne();
+      return res.status(200).json({
+        success: true,
+        message: "Friend Request Rejected",
+      });
+    }
+
+  //   Update the status of the request to 'accepted'
+    const updatedRequest = await Request.findByIdAndUpdate(
+      requestId,
+      { status: 'accepted' }, // Updated status object
+      { new: true }
+    );
+    console.log("updatedRequest", updatedRequest);
+
+    return res.status(200).json({
+      success: true,
+      message: "Friend Request Accepted",
+      // senderId: request.sender._id
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error"
+    });
+  }
+};

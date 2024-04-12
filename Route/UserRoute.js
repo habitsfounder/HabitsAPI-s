@@ -1,7 +1,7 @@
 const express = require("express")
 
 const { isAuthJWT, authorizeRoles } = require("../Utils/jwt")
-const { addUser, loginUser, logoutUser, forgotPwd, resetPassword, deleteUser, updateUserPassword, updateUser, getUserById, getAllUsersWithPagination,getMyProfile, sendFriendRequest, acceptFriendRequest, getMyNotification, getMyFriends} = require("../Controller/UserAuth")
+const { addUser, loginUser, logoutUser, forgotPwd, resetPassword, deleteUser, updateUserPassword, updateUser, getUserById, getAllUsersWithPagination,getMyProfile, sendFriendRequest, acceptFriendRequest, getMyNotification, getMyFriends,acceptRequest} = require("../Controller/UserAuth")
 const { singleAvatar } = require('../Utils/multer');
 const router = express.Router()
 
@@ -20,6 +20,8 @@ router.route("/sendRequest").put(isAuthJWT,sendFriendRequest)
 router.route("/acceptRequest").put(isAuthJWT,acceptFriendRequest)
 router.route("/notifications").get(isAuthJWT,getMyNotification)
 router.route("/friends/:chatId").get(isAuthJWT,getMyFriends)
+router.route("/GroupRequest_Accept").put(isAuthJWT,acceptRequest)
+
 
 // router.route("/login").get(adminLogin)
 // router.route("/updatePass").post(isAuthJWT,authorizeRoles("Admin"),updatePassword)

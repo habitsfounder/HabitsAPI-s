@@ -7,15 +7,20 @@ const requestSchema = new mongoose.Schema(
       default: "pending",
       enum: ["pending", "accepted", "rejected"],
     },
+    chat_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Chat",
+      required: true,
+    },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // required: true,
     },
     receiver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // required: true,
     },
   },
   {
