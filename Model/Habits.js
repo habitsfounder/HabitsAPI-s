@@ -41,7 +41,7 @@ const habitDetailSchema = new mongoose.Schema({
   },
   logo: {
     type: String, // Adjust type according to your requirements
-    required: true // Assuming logo is required
+    // required: true // Assuming logo is required
   },
   units: {
     type: String,

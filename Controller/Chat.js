@@ -296,50 +296,82 @@ exports.getMyGroups = async (req, res, next) => {
         };
       }
   console.log("req.user ",req.user );
-      // Check if certain members are in the request table with status "accepted"
-      // const acceptedMembers = await Request.find({
-      //   $and: [
-      //     { status: 'accepted' },
-      //     { $or: [{ receiver: req.user }, { sender: req.user }] }
-      //   ]
-      // });
-  
-      // // Add the condition to the query to include only groups where all accepted members exist
-      // if (acceptedMembers.length > 0) {
-      //   console.log("111");
-      //   query.members = { $in: acceptedMembers };
-      // }
-
 
       const acceptedMembers = await Request.find({
         status: 'accepted',
         $or: [{ receiver: req.user }, { sender: req.user }]
       });
       
-      // Extract member IDs from the accepted requests
-      // const memberIds = acceptedMembers.reduce((acc, curr) => {
-      //   acc.push(curr.sender, curr.receiver);
-      //   return acc;
-      // }, []);
-      
-      // // Add the condition to the query to include only groups where all accepted members exist
-      // if (memberIds.length > 0) {
-      //   console.log("33");
-      //   query.members = { $in: memberIds };
-      // }
       
       const acceptedMemberIds = acceptedMembers.flatMap(request => [request.sender, request.receiver]);
 
       // Include only groups where all accepted members exist
-      query = {
-        ...query,
-        members: {
-          $in: acceptedMemberIds
-        }
-      };
-      
 
-  console.log("acceptedMembers",query.members);
+      
+      console.log("acceptedMemberIds",acceptedMemberIds);
+
+ if(Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0){
+console.log("11111");
+   const chats = await Chat.find(query)
+    .populate({
+      path: "members",
+      // select: "name avatar",
+    })
+    .populate({
+      path: "habits",
+      populate: {
+        path: "habit verification",
+        models: {
+          path: "Habit",
+          model: "Habit",
+        },
+        models: {
+          path: "Verification",
+          model: "Verification",
+        },
+      },
+    })    
+    .populate("winner_user");
+    
+    const currentDate = new Date();
+    const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user}) => {
+      const endDate = new Date(activityEndDate);
+      const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
+
+      return {
+        _id,
+        groupChat,
+        name,
+        habits,
+        members,
+        // habit_verification_method,
+        groupImage,
+        groupDescription,
+        activityStartDate,
+        activityEndDate,
+        monetaryPotAmount,
+        mooney_transferred,
+        daysLeft,
+        max_points,
+        winner_user,
+        active_memberIds:acceptedMemberIds
+
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      groups
+    });
+
+      }else{
+        query = {
+          ...query,
+          members: {
+            $in: acceptedMemberIds
+          }
+        };
+console.log("11111111111111111111111111111111");
       const chats = await Chat.find(query)
         .populate({
           path: "members",
@@ -383,14 +415,18 @@ exports.getMyGroups = async (req, res, next) => {
           daysLeft,
           max_points,
           winner_user,
+          active_memberIds:acceptedMemberIds
           // avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
         };
       });
-          
+      // console.log("v",groups);    
       return res.status(200).json({
         success: true,
         groups
       });
+
+    }
+
     } catch (error) {
       console.log(error);
       return res.status(500).json({
