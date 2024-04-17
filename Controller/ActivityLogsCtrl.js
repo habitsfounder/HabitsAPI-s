@@ -154,6 +154,84 @@ exports.getGroupPoints = async (req, res) => {
   }
 };
 
+
+// exports.getGroupPoints = async (req, res) => {
+//   const userId = req.body.id;
+//   const { groupId } = req.params;
+
+//   try {
+//     const group = await Chat.findOne({ _id: groupId, members: userId });
+//     if (!group) {
+//       return res.status(403).json({ error: 'User does not have access to this group.' });
+//     }
+
+//     // Fetch activity logs for the group
+//     const activityLogs = await ActivityLog.find({ chat_id: groupId }).populate('user_id').populate('chat_id');
+
+//     // Sort activity logs by points in descending order
+//     activityLogs.sort((a, b) => b.points_earned - a.points_earned);
+
+//     // Initialize variables to calculate totals
+//     let totalPoints = 0;
+//     let maxPoints = group.max_points;
+//     let lastActivity = null;
+
+//     // Extract relevant information
+//     const responseData = {
+//       success: true,
+//       data: {
+//         members: []
+//       }
+//     };
+
+//     // Loop through each member in the group
+//     for (const memberId of group.members) {
+//       const member = await User.findById(memberId);
+//       if (member) {
+//         const memberData = {
+//           user: member,
+//           points: 0,
+//           max_points: maxPoints,
+//           last_activity: null
+//         };
+
+//         // Calculate total points, maximum points, and last activity for each member
+//         activityLogs.forEach(log => {
+//           if (log.user_id._id.toString() === memberId.toString()) {
+//             memberData.points += log.points_earned;
+//             if (log.createdAt > memberData.last_activity || !memberData.last_activity) {
+//               memberData.last_activity = log.createdAt;
+//             }
+//           }
+//         });
+
+//         // Update total points and last activity for all members
+//         totalPoints += memberData.points;
+//         if (memberData.last_activity && (!lastActivity || memberData.last_activity > lastActivity)) {
+//           lastActivity = memberData.last_activity;
+//         }
+
+//         // Push member data to responseData
+//         responseData.data.members.push(memberData);
+//       }
+//     }
+
+//     // Set total points and last activity in responseData
+//     responseData.data.points = totalPoints;
+//     responseData.data.max_points = maxPoints;
+//     responseData.data.last_activity = lastActivity;
+
+//     return res.json(responseData);
+//   } catch (error) {
+//     console.error('Error:', error.message);
+//     return res.status(500).json({ error: 'Internal server error' });
+//   }
+// };
+
+
+
+
+
 exports.progressInfo = async (req,res) => {
   try {
     // Get user's active groups
