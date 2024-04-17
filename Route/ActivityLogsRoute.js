@@ -23,6 +23,6 @@ router.get('/progressInfo',isAuthJWT, activityLogController.progressInfo);
 
 router.get('/habitsInProgress',isAuthJWT, activityLogController.habitsInProgress);
 
-router.get('/otherUsersActivityLogs',isAuthJWT, activityLogController.otherUsersActivityLogs);
+router.get('/otherUsersActivityLogs', activityLogController.otherUsersActivityLogs);
 
 module.exports = router;

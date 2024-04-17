@@ -56,7 +56,10 @@ const habitSchema = new mongoose.Schema({
     required: true
   },
   details: [habitDetailSchema] // Embed habit details as an array of objects
-}, {
+},
+
+
+{
   timestamps: true
 });
 
