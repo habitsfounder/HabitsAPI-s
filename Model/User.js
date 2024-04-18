@@ -50,7 +50,14 @@ const userSchema = new mongoose.Schema({
   },
   lastLogin: {
     type: Date
-  }
+  },
+  device_id: {
+    type: String,
+  },
+  status: {
+    type: String,
+    default: 0,
+  },
 });
 
 userSchema.pre("save", async function (next) {

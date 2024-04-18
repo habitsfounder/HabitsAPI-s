@@ -68,7 +68,7 @@ exports.addAdmin = async (req, res) => {
 
 exports.adminLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password,device_id } = req.body;
 
     if (!email || !password) {
       return res.status(HttpStatus.BAD_REQUEST).json({
@@ -94,6 +94,11 @@ exports.adminLogin = async (req, res) => {
         { activeToken: token },
         { new: true }
       );
+
+      const updatedUser = await Admin.updateOne(
+        { email: email }, // Filter criteria
+        { $set: { device_id: device_id, status: "1" } } // Update fields
+    );
 
       return res.status(HttpStatus.OK).json({
         message: `Welcome ${admin.email}`,
@@ -132,7 +137,7 @@ exports.logout = async (req, res) => {
     if (userData.activeToken && userData.activeToken === token) {
       const user = await Admin.findOneAndUpdate(
         { email: email, activeToken: token },
-        { $unset: { activeToken: "" } }, // Unset the token
+        { $unset: { activeToken: "" , status: "2" } }, // Unset the token
         { new: true }
       );
       if (!user) {
