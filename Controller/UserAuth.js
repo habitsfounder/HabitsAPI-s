@@ -378,7 +378,7 @@ exports.loginUser = async (req, res) => {
   //   console.error("Error:", error);
   //   res.status(500).json({ success: false, error: "Internal server error" });
   // }
-    const { email, password, provider_ID } = req.body;
+    const { email, password, provider_ID,device_id } = req.body;
     
     if (!email || (!password && !provider_ID)) {
       return res.status(400).json({ success: false, error: "Please provide email and password/provider ID" });
@@ -401,6 +401,11 @@ exports.loginUser = async (req, res) => {
   
       const token = generateToken({ id: findUser.id });
       await User.findByIdAndUpdate(findUser._id, { activeToken: token, lastLogin: Date.now() });
+
+      const updatedUser = await User.updateOne(
+        { email: email }, // Filter criteria
+        { $set: { device_id: device_id, status: "1" } } // Update fields
+    );
   
       res.status(200).json({
         success: true,
@@ -430,12 +435,15 @@ exports.logoutUser = async (req, res) => {
         success: false,
         message: "Invalid session or token, please login again",
       });
+    
+    
     }
+
     const userData = await User.findOne({ email });
     if (userData.activeToken && userData.activeToken === token) {
       const user = await User.findOneAndUpdate(
         { email: email, activeToken: token },
-        { $unset: { activeToken: "" } },
+        { $unset: { activeToken: "", status: "2" } },
         { new: true }
       );
       if (!user) {

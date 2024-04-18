@@ -23,6 +23,13 @@ const adminSchema = new mongoose.Schema(
     resetToken: {
       type: String,
     },
+    device_id: {
+      type: String,
+    },
+    status: {
+      type: String,
+      default: 0,
+    },
   },
   {
     timestamps: true,

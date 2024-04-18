@@ -20,6 +20,12 @@ const ActivityLogsSchema = new mongoose.Schema(
     activity_done: {
       type: String,
     },
+    // members: [
+    //   {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "User",
+    //   },
+    // ],
   },
   {
     timestamps: true,
