@@ -9,6 +9,8 @@ const sendEmail = require("../Utils/SendEmail");
 const { ALERT, REFETCH_CHATS, NEW_ATTACHMENT, NEW_MESSAGE_ALERT, NEW_REQUEST } = require("../constants/events");
 const { emitEvent } = require("../Utils/jwt");
 const { getOtherMember } = require("../Utils/helper");
+const { v4: uuidv4 } = require('uuid');
+const {RtcTokenBuilder, RtcRole} = require('agora-access-token');
 
 const HttpStatus = {
   OK: 200,
@@ -721,3 +723,64 @@ exports.acceptRequest = async (req, res) => {
     });
   }
 };
+
+exports.join_channel = async (req, res ,next) => {
+
+  const APP_ID ='68d1d07cba51485088375f0aa5d8552c';
+const APP_CERTIFICATE ='150084ca18b2419e8f4ec45b9f4ef94e';
+console.log("1233333");
+// set response header
+res.header('Access-Control-Allow-Origin', '*');
+
+const generatedchannelName = uuidv4();
+// get channel name
+// const channelName = req.params.channel;
+// if (!channelName) {
+//   return resp.status(400).json({ 'error': 'channel is required' });
+// }
+
+ // get uid
+ let uid = req.params.uid;
+ if(!uid || uid === '') {
+   return res.status(400).json({ 'error': 'uid is required' });
+ }
+
+// get role
+let role;
+if (req.params.role === 'publisher') {
+  role = RtcRole.PUBLISHER;
+} else if (req.params.role === 'subscriber') {
+  role = RtcRole.SUBSCRIBER
+} else {
+  return res.status(400).json({ 'error': 'role is incorrect' });
+}
+
+
+// get the expire time
+let expireTime = req.query.expiry;
+if (!expireTime || expireTime === '') {
+  expireTime = 60 * 60 ;
+} else {
+  expireTime = parseInt(expireTime, 10);
+}
+// calculate privilege expire time
+const currentTime = Math.floor(Date.now() / 1000);
+const privilegeExpireTime = currentTime + expireTime;
+console.log(role);
+
+// build the token
+let token;
+
+if (req.params.tokentype === 'userAccount') {
+  token = RtcTokenBuilder.buildTokenWithAccount(APP_ID, APP_CERTIFICATE,generatedchannelName, uid, role, privilegeExpireTime);
+} else if (req.params.tokentype === 'uid') {
+  token = RtcTokenBuilder.buildTokenWithUid(APP_ID, APP_CERTIFICATE,generatedchannelName, uid, role, privilegeExpireTime);
+} else {
+  return res.status(400).json({ 'error': 'token type is invalid' });
+}
+
+// return the token
+return res.json({ 'rtcToken': token,'generatedchannelName':generatedchannelName
+});
+}
+

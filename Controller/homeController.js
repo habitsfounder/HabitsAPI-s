@@ -39,13 +39,14 @@ exports.getAllHomeDitails = async (req, res) => {
             .limit(limit);
     
         // console.log("activityLogs", activityLogs);
-    
-        let all_habits = {}; // Initialize an empty object to store all habits
+
+
+ let all_habits = {}; // Initialize an empty object to store all habits
 
      activityLogs.forEach(activityLog => {
             // Check if chat_id exists and if it has a habit property
             if (activityLog.chat_id || activityLog.chat_id.habit) {
-                console.log("33");
+                // console.log("33");
                 // Retrieve the habit from the chat_id object
                 const habits = activityLog.chat_id.habit; // Assuming habit is an array, get the first element
                 // Store the habit directly in the object
@@ -54,11 +55,11 @@ exports.getAllHomeDitails = async (req, res) => {
                 all_habits = activityLog.chat_id.habits;
 
                 all_habits.forEach(async habitId => {
-                    console.log("habitId", habitId.habit);
+                    // console.log("habitId", habitId.habit);
                     // Fetch the habit details from the database using habitId
                     const habitDetails = await Habit.findById(habitId);
                     // Check if the habitDetails exist
-                    console.log("habitDetails", habitDetails);
+                    // console.log("habitDetails", habitDetails);
                     if (habitDetails) {
                         // Check if the habit is already in all_habits
                         if (!all_habits[habitId]) {
@@ -95,7 +96,7 @@ exports.getAllHomeDitails = async (req, res) => {
         const maxProgressValues = await Promise.all(maxProgressPromises);
         const maxProgress = maxProgressValues.reduce((acc, val) => acc + val, 0);
         // const maxProgress = maxProgressValues.reduce((acc, val) => acc + parseInt(val), 0);
-        console.log("maxProgress",maxProgress);
+        // console.log("maxProgress",maxProgress);
     
         // Get today's activity logs for the user
         const todayActivityLogs = await ActivityLog.find({
