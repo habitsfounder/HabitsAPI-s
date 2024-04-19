@@ -123,51 +123,6 @@ exports.deleteActivityLog = async (req, res, next) => {
 };
 
 
-// exports.getGroupPoints = async (req, res) => {
-//   const userId  = req.user;
-//   const { groupId } = req.params;
-
-//   try {
-//     // const group = await Chat.findOne({ _id: groupId, members: userId });
-// const group = await Chat.findOne({ _id: groupId, members: userId }).populate('members');
-
-//     console.log("",group);
-//     if (!group) {
-//       return res.status(403).json({ error: 'User does not have access to this group.' });
-//     }
-
-//     // Fetch activity logs for the group
-//     const activityLogs = await ActivityLog.find({ chat_id: groupId }).populate('user_id').populate('chat_id')
-    
-//     console.log("activityLogs",activityLogs);
-
-
-
-// if (activityLogs.length>0) {
-//   console.log("1");
-//       // Sort activity logs by points in descending order
-//       activityLogs.sort((a, b) => b.points_earned - a.points_earned);
-
-//       // Extract relevant information and return
-//       const groupPoints = activityLogs.map(log => ({
-//         user: log.user_id,
-//         // chat_id: log.chat_id,
-//         members: group.members,
-//         points: log.points_earned,
-//         max_points: group.max_points, // Assuming max_points is a property of the group
-//         last_activity: log.activity_done,
-//       }));
-//       return res.json(groupPoints);
-// }else{
-//   console.log("11");
-//     return res.json({status:404,message:"activityLogs not created"});
-// }
-
-//   } catch (error) {
-//     console.error('Error:', error.message);
-//     return res.status(500).json({ error: 'Internal server error' });
-//   }
-// };
 
 
 exports.getGroupPoints = async (req, res) => {
@@ -182,26 +137,43 @@ exports.getGroupPoints = async (req, res) => {
     }
 
     // Fetch activity logs for the group
-    const activityLogs = await ActivityLog.find({ chat_id: groupId }).populate('user_id').populate('chat_id');
+    const activityLogs = await ActivityLog.find({ chat_id: groupId }).sort({ createdAt: -1 }).populate('user_id').populate('chat_id');
 
     if (activityLogs.length > 0) {
-      console.log("1");
-      // Update members array with points and activity done
+      // Group members by their IDs
+      const membersById = {};
       group.members.forEach(member => {
-        const correspondingLog = activityLogs.find(log => String(log.user_id._id) === String(member._id));
-        if (correspondingLog) {
-          member.points_earned = correspondingLog.points_earned;
-          member.activity_done = correspondingLog.activity_done;
+        membersById[member._id.toString()] = member;
+      });
+
+
+      // Calculate sum of points earned for each user
+      const userPointsMap = {};
+      activityLogs.forEach(log => {
+        const userId = log.user_id._id.toString();
+        if (userPointsMap[userId]) {
+          userPointsMap[userId] += log.points_earned;
         } else {
-          // If no corresponding log found, set default values
-          member.points_earned = '0';
-          member.activity_done = '';
+          userPointsMap[userId] = log.points_earned;
         }
       });
-      return res.json({ status: true, message: "get data successfully",data:group.members, max_points:group.max_points });
+
+  
+
+      // Update members array with points and last activity done
+      Object.keys(membersById).forEach(memberId => {
+        const member = membersById[memberId];
+        member.points_earned = userPointsMap[memberId] || '0';
+        const correspondingLog = activityLogs.find(log => log.user_id._id.toString() === memberId);
+        member.activity_done = correspondingLog ? correspondingLog.activity_done : '';
+      });
+
+      // Convert the object of members back to an array
+      const groupedMembers = Object.values(membersById);
+
+      return res.json({ status: true, message: "get data successfully", data: groupedMembers, max_points: group.max_points });
 
     } else {
-      console.log("11");
       return res.json({ status: false, message: "activityLogs not created" });
     }
 
@@ -210,6 +182,8 @@ exports.getGroupPoints = async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+
 
 
 

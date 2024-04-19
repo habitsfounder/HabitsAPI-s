@@ -25,25 +25,25 @@ function uploadFilee(file, filename) {
   var parentFolder = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate();
 
   const params = {
-      Bucket: process.env.BUCKET,
-      Key: parentFolder + '/' + filename,
-      Body: file,
+    Bucket: process.env.BUCKET,
+    Key: parentFolder + '/' + filename,
+    Body: file,
   };
-  
+
   return new Promise(function (resolve, reject) {
-      s3.upload(params, function (err, data) {
-          if (err) {
-              console.log('Error =>' + err);
-              reject(err);
-          }
-          if (data != null) {
-              console.log('Image', 'uploadOnS3' + data.Location);
-              resolve({ // Resolve with an object containing public_id and url
-                  public_id: data.Key,
-                  url: data.Location
-              });
-          }
-      });
+    s3.upload(params, function (err, data) {
+      if (err) {
+        console.log('Error =>' + err);
+        reject(err);
+      }
+      if (data != null) {
+        console.log('Image', 'uploadOnS3' + data.Location);
+        resolve({ // Resolve with an object containing public_id and url
+          public_id: data.Key,
+          url: data.Location
+        });
+      }
+    });
   });
 }
 
@@ -65,18 +65,18 @@ exports.uploadFile = async (req, res, next) => {
 };
 
 exports.newGroupChat = async (req, res, next) => {
-  const { name, members, habits, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate,monetaryPotAmount,max_points} = req.body;
+  const { name, members, habits, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, max_points } = req.body;
   try {
     if (members.length < 2) {
       return res.status(400).json({
-          success: false,
-          error: "Group Chat must have at least 3 members",
-        });
+        success: false,
+        error: "Group Chat must have at least 3 members",
+      });
     }
 
     const allMembers = [...members, req.user];
 
-  const new_data =  await Chat.create({
+    const new_data = await Chat.create({
       name,
       groupChat: true,
       creator: req.user,
@@ -94,7 +94,7 @@ exports.newGroupChat = async (req, res, next) => {
     emitEvent(req, ALERT, allMembers, `Welcome to ${name} Group`);
     emitEvent(req, REFETCH_CHATS, members);
 
-console.log("new_data",new_data);
+    console.log("new_data", new_data);
 
     // var message = {
     //   // to: manager.device_id,
@@ -103,31 +103,31 @@ console.log("new_data",new_data);
     //   notification: {
     //     title: ' Habit App Notification ',
     //     body: `Requested You to Join a New Habit Group`,
-  
+
     //   },
     //   data: {
     //     "click_action": "FLUTTER_NOTIFICATION_CLICK",
     //     'notification_type': 1,
     //   },
-  
+
     // };
 
-  // const add_notification = await Notification.create(
-  //         {
-  //           sender_id: req.user,
-  //           receiver_id: allMembers,
-  //           chat_id: new_data._id,
-  //           message: message.notification.body,
-  //           status: 1,
-  //         })
-  // console.log("add_notification",add_notification);
-  
+    // const add_notification = await Notification.create(
+    //         {
+    //           sender_id: req.user,
+    //           receiver_id: allMembers,
+    //           chat_id: new_data._id,
+    //           message: message.notification.body,
+    //           status: 1,
+    //         })
+    // console.log("add_notification",add_notification);
+
     // fcm.send(message, function (err, response) {
-  
+
     //   console.log("1", message);
     //   if (err) {
     //     console.log("Something Has Gone Wrong !");
-  
+
     //   } else {
     //     console.log("Successfully Sent With Resposne :", response);
     //     var body = message.notification.body;
@@ -141,7 +141,7 @@ console.log("new_data",new_data);
     //         status: 1,
     //       })
     //   }
-  
+
     //   //  console.log("2");
     // })
 
@@ -158,7 +158,7 @@ console.log("new_data",new_data);
       //     {sender: memberId, receiver: req.user,chat_id:new_data._id},
       //   ]
       // });
-     
+
       // if(request) {
       //   console.log("eeee");
       //   res.status(400).json({
@@ -191,7 +191,7 @@ console.log("new_data",new_data);
 
 exports.updateGroupChat = async (req, res, next) => {
   const { groupId } = req.params;
-  const { name, members, habit, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, money_transferred, max_points, winner_user} = req.body;
+  const { name, members, habit, habit_verification_method, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, money_transferred, max_points, winner_user } = req.body;
   try {
     const updatedFields = {
       name,
@@ -232,146 +232,87 @@ exports.updateGroupChat = async (req, res, next) => {
   }
 };
 
-exports.getMyChat = async (req, res ,next) => {
+exports.getMyChat = async (req, res, next) => {
   try {
-      const chats = await Chat.find({members: req.user}).populate("members" ,"name avatar");
+    const chats = await Chat.find({ members: req.user }).populate("members", "name avatar");
 
-      const transformedChats = chats.map(({_id, name,members,groupChat}) => {
+    const transformedChats = chats.map(({ _id, name, members, groupChat }) => {
 
-        const otherMember = getOtherMember(members, req.user)
+      const otherMember = getOtherMember(members, req.user)
 
-        return {
-            _id,
-            groupChat, 
-            avatar: groupChat?members.slice(0,3).map(({avatar}) => avatar.url): [otherMember.avatar.url],
-            name: groupChat ? name : otherMember.name,
-            members: members.reduce((prev, curr)=> {
-              
-              if(curr._id.toString() !== req.user.toString()){
-                prev.push(curr._id)
-              }
-              return prev;
-            }, []),
-        };
-        // members.filter(i => i._id.toString() !== req.user.toString()).map(i=>i._id)
-      }) 
-    
+      return {
+        _id,
+        groupChat,
+        avatar: groupChat ? members.slice(0, 3).map(({ avatar }) => avatar.url) : [otherMember.avatar.url],
+        name: groupChat ? name : otherMember.name,
+        members: members.reduce((prev, curr) => {
+
+          if (curr._id.toString() !== req.user.toString()) {
+            prev.push(curr._id)
+          }
+          return prev;
+        }, []),
+      };
+      // members.filter(i => i._id.toString() !== req.user.toString()).map(i=>i._id)
+    })
+
     return res.status(200).json({
       success: true,
       chats: transformedChats
     })
   } catch (error) {
-      console.log(error);
+    console.log(error);
   }
 };
 
 
 exports.getMyGroups = async (req, res, next) => {
-    try {
-      let query = {};
-      const { searchQuery } = req.query;
-  
-      if (searchQuery) {
-        const userId = req.user;
-        query = {
-          $or: [
-            { members: userId }, // Search groups where the user is a member
-            { creator: userId } // Search groups created by the user
-          ],
-          $and: [
-            { groupChat: true }, // Must be a group chat
-            {
-              $or: [
-                { name: { $regex: new RegExp(searchQuery, "i") } },
-                { groupDescription: { $regex: new RegExp(searchQuery, "i") } }
-              ]
-            }
-          ]
-        };
-      } else {
-        query = {
-          members: req.user,
-          groupChat: true,
-          creator: req.user
-        };
-      }
-  console.log("req.user ",req.user );
 
-      const acceptedMembers = await Request.find({
-        status: 'accepted',
-        $or: [{ receiver: req.user }, { sender: req.user }]
-      });
-      
-      
-      const acceptedMemberIds = acceptedMembers.flatMap(request => [request.sender, request.receiver]);
+  try {
+    let query = {};
+    const { searchQuery } = req.query;
 
-      // Include only groups where all accepted members exist
-
-      
-      console.log("acceptedMemberIds",acceptedMemberIds);
-
- if(Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0){
-console.log("11111");
-   const chats = await Chat.find(query)
-    .populate({
-      path: "members",
-      // select: "name avatar",
-    })
-    .populate({
-      path: "habits",
-      populate: {
-        path: "habit verification",
-        models: {
-          path: "Habit",
-          model: "Habit",
-        },
-        models: {
-          path: "Verification",
-          model: "Verification",
-        },
-      },
-    })    
-    .populate("winner_user");
-    
-    const currentDate = new Date();
-    const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user}) => {
-      const endDate = new Date(activityEndDate);
-      const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
-
-      return {
-        _id,
-        groupChat,
-        name,
-        habits,
-        members,
-        // habit_verification_method,
-        groupImage,
-        groupDescription,
-        activityStartDate,
-        activityEndDate,
-        monetaryPotAmount,
-        mooney_transferred,
-        daysLeft,
-        max_points,
-        winner_user,
-        active_memberIds:acceptedMemberIds
-
-      };
-    });
-
-    return res.status(200).json({
-      success: true,
-      groups
-    });
-
-      }else{
-        query = {
-          ...query,
-          members: {
-            $in: acceptedMemberIds
+    if (searchQuery) {
+      const userId = req.user;
+      query = {
+        $or: [
+          { members: userId }, // Search groups where the user is a member
+          { creator: userId } // Search groups created by the user
+        ],
+        $and: [
+          { groupChat: true }, // Must be a group chat
+          {
+            $or: [
+              { name: { $regex: new RegExp(searchQuery, "i") } },
+              { groupDescription: { $regex: new RegExp(searchQuery, "i") } }
+            ]
           }
-        };
-console.log("11111111111111111111111111111111");
+        ]
+      };
+    } else {
+      query = {
+        members: req.user,
+        groupChat: true,
+        creator: req.user
+      };
+    }
+    console.log("req.user ", req.user);
+
+    const acceptedMembers = await Request.find({
+      status: 'accepted',
+      $or: [{ receiver: req.user }, { sender: req.user }]
+    });
+
+
+    const acceptedMemberIds = acceptedMembers.flatMap(request => [request.sender, request.receiver]);
+
+    // Include only groups where all accepted members exist
+
+
+    console.log("acceptedMemberIds", acceptedMemberIds);
+
+    if (Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0) {
+      console.log("11111");
       const chats = await Chat.find(query)
         .populate({
           path: "members",
@@ -393,12 +334,11 @@ console.log("11111111111111111111111111111111");
         })
         .populate("winner_user");
 
-  
       const currentDate = new Date();
-      const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user}) => {
+      const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
         const endDate = new Date(activityEndDate);
         const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
-  
+
         return {
           _id,
           groupChat,
@@ -415,7 +355,68 @@ console.log("11111111111111111111111111111111");
           daysLeft,
           max_points,
           winner_user,
-          active_memberIds:acceptedMemberIds
+          active_memberIds: acceptedMemberIds
+
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        groups
+      });
+
+    } else {
+      query = {
+        ...query,
+        members: {
+          $in: acceptedMemberIds
+        }
+      };
+      console.log("11111111111111111111111111111111");
+      const chats = await Chat.find(query)
+        .populate({
+          path: "members",
+          // select: "name avatar",
+        })
+        .populate({
+          path: "habits",
+          populate: {
+            path: "habit verification",
+            models: {
+              path: "Habit",
+              model: "Habit",
+            },
+            models: {
+              path: "Verification",
+              model: "Verification",
+            },
+          },
+        })
+        .populate("winner_user");
+
+
+      const currentDate = new Date();
+      const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
+        const endDate = new Date(activityEndDate);
+        const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
+
+        return {
+          _id,
+          groupChat,
+          name,
+          habits,
+          members,
+          // habit_verification_method,
+          groupImage,
+          groupDescription,
+          activityStartDate,
+          activityEndDate,
+          monetaryPotAmount,
+          mooney_transferred,
+          daysLeft,
+          max_points,
+          winner_user,
+          active_memberIds: acceptedMemberIds
           // avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
         };
       });
@@ -427,37 +428,37 @@ console.log("11111111111111111111111111111111");
 
     }
 
-    } catch (error) {
-      console.log(error);
-      return res.status(500).json({
-        success: false,
-        error: "Internal Server Error"
-      });
-    }
-  };
-  
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal Server Error"
+    });
+  }
+};
+
 
 
 exports.addMembers = async (req, res, next) => {
-  const { chatId, members} = req.body;
+  const { chatId, members } = req.body;
 
-  if(!members || members.length < 1) {
-    return res.status(404).json({success: false, error: "Please provide members" });
+  if (!members || members.length < 1) {
+    return res.status(404).json({ success: false, error: "Please provide members" });
   }
   const chat = await Chat.findById(chatId);
 
-  if(!chat){
-    return res.status(404).json({success: false, error: "Chat not found" });
+  if (!chat) {
+    return res.status(404).json({ success: false, error: "Chat not found" });
   }
 
-  if(!chat.groupChat){
-    return res.status(400).json({success: false, error: "This is not a group chat" });
+  if (!chat.groupChat) {
+    return res.status(400).json({ success: false, error: "This is not a group chat" });
   }
 
-  if(chat.creator.toString() !== req.user._id.toString()){
+  if (chat.creator.toString() !== req.user._id.toString()) {
     // console.log(chat.creator.toString());
     // console.log(req.user._id.toString());
-    return res.status(403).json({success: false, error: "You are not allowed to add members" });
+    return res.status(403).json({ success: false, error: "You are not allowed to add members" });
   }
 
   const allNewMembersPromise = members.map((i) => User.findById(i, "name"));
@@ -469,8 +470,8 @@ exports.addMembers = async (req, res, next) => {
   // chat.members.push(...allNewMembers.map((i)=> i._id));
   chat.members.push(...uniqueMembers);
 
-  if(chat.members.length > 100){
-    return res.status(400).json({success: false, error: "Group members limit reached" });
+  if (chat.members.length > 100) {
+    return res.status(400).json({ success: false, error: "Group members limit reached" });
   }
 
   await chat.save();
@@ -488,26 +489,26 @@ exports.addMembers = async (req, res, next) => {
 };
 
 exports.removeMember = async (req, res, next) => {
-  const {chatId, userId} = req.body;
+  const { chatId, userId } = req.body;
 
   const [chat, userThatWillBeRemoved] = await Promise.all([
     Chat.findById(chatId), User.findById(userId, "name")
   ]);
 
-  if(!chat){
-    return res.status(404).json({success: false, error: "Chat not found" });
+  if (!chat) {
+    return res.status(404).json({ success: false, error: "Chat not found" });
   }
 
-  if(!chat.groupChat){
-    return res.status(400).json({success: false, error: "This is not a group chat" });
+  if (!chat.groupChat) {
+    return res.status(400).json({ success: false, error: "This is not a group chat" });
   }
 
-  if(chat.creator.toString() !== req.user._id.toString()){
-    return res.status(403).json({success: false, error: "You are not allowed to remove members" });
+  if (chat.creator.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ success: false, error: "You are not allowed to remove members" });
   }
 
-  if(chat.members.length <= 3) {
-    return res.status(400).json({success: false, error: "Group must have at least 3 members" });
+  if (chat.members.length <= 3) {
+    return res.status(400).json({ success: false, error: "Group must have at least 3 members" });
   }
   chat.members = chat.members.filter((member) => member.toString() !== userId.toString());
 
@@ -517,7 +518,7 @@ exports.removeMember = async (req, res, next) => {
   emitEvent(req, REFETCH_CHATS, chat.members);
 
   return res.status(200).json({
-    success: true, 
+    success: true,
     message: "Member removed successfully"
   })
 };
@@ -527,23 +528,23 @@ exports.leaveGroup = async (req, res, next) => {
 
   const chat = await Chat.findById(chatId);
 
-  if(!chat){
-    return res.status(404).json({success: false, error: "Chat not found" });
+  if (!chat) {
+    return res.status(404).json({ success: false, error: "Chat not found" });
   }
 
-  if(!chat.groupChat){
-    return res.status(400).json({success: false, error: "This is not a group chat" });
+  if (!chat.groupChat) {
+    return res.status(400).json({ success: false, error: "This is not a group chat" });
   }
 
   const remainingMembers = chat.members.filter(
     (member) => member.toString() !== req.user.toString()
   )
 
-  if(remainingMembers.length < 3){
-    return res.status(400).json({success: false, error: "Group must have at least 3 members" });
+  if (remainingMembers.length < 3) {
+    return res.status(400).json({ success: false, error: "Group must have at least 3 members" });
   }
 
-  if(chat.creator.toString() === req.user.toString()){
+  if (chat.creator.toString() === req.user.toString()) {
     // const newCreator = remainingMembers[0]
     const randomElement = Math.floor(Math.random() * remainingMembers.length);
     const newCreator = remainingMembers[randomElement];
@@ -552,14 +553,14 @@ exports.leaveGroup = async (req, res, next) => {
 
   chat.members = remainingMembers;
 
-  const [user] = await Promise.all([User.findById(req.user, "name"),chat.save()]);
+  const [user] = await Promise.all([User.findById(req.user, "name"), chat.save()]);
   await chat.save();
 
   emitEvent(req, ALERT, chat.members, `User ${user.name} has Left the group`)
   // emitEvent(req, REFETCH_CHATS, chat.members);
 
   return res.status(200).json({
-    success: true, 
+    success: true,
     message: "Member removed successfully"
   })
 };
@@ -572,14 +573,14 @@ exports.sendAttachments = async (req, res, next) => {
     User.findById(req.user, "name")
   ]);
 
-  if(!chat){
-    return res.status(404).json({success: false, error: "Chat not found" });
+  if (!chat) {
+    return res.status(404).json({ success: false, error: "Chat not found" });
   }
 
   const files = req.files || []
 
-  if(files.length < 1){
-    return res.status(400).json({success: false, error: "Please provide attachments" });
+  if (files.length < 1) {
+    return res.status(400).json({ success: false, error: "Please provide attachments" });
   }
 
   const attachments = [];
@@ -589,9 +590,9 @@ exports.sendAttachments = async (req, res, next) => {
     attachments.push(url);
   }
 
-  const messageForDB = { content:"", attachments, sender: me._id, chat: chatId};
+  const messageForDB = { content: "", attachments, sender: me._id, chat: chatId };
 
-  const messageForRealTime = { 
+  const messageForRealTime = {
     ...messageForDB,
     sender: {
       _id: me._id,
@@ -606,8 +607,8 @@ exports.sendAttachments = async (req, res, next) => {
     chatId
   });
 
-  emitEvent(req, NEW_MESSAGE_ALERT, chat.members, {chatId})
- 
+  emitEvent(req, NEW_MESSAGE_ALERT, chat.members, { chatId })
+
   return res.status(200).json({
     success: true,
     message
@@ -615,14 +616,14 @@ exports.sendAttachments = async (req, res, next) => {
 };
 
 exports.getChatDetails = async (req, res, next) => {
-  if(req.query.populate === "true"){
+  if (req.query.populate === "true") {
     const chat = await Chat.findById(req.params.id).populate("members", "name avatar").lean();
 
-    if(!chat){
-      return res.status(404).json({success: false, error: "Chat not found" });
+    if (!chat) {
+      return res.status(404).json({ success: false, error: "Chat not found" });
     }
 
-    chat.members = chat.members.map(({_id, name, avatar}) => ({
+    chat.members = chat.members.map(({ _id, name, avatar }) => ({
       _id,
       name,
       avatar: avatar.url
@@ -635,8 +636,8 @@ exports.getChatDetails = async (req, res, next) => {
   } else {
     const chat = await Chat.findById(req.params.id);
 
-    if(!chat){
-      return res.status(404).json({success: false, error: "Chat not found" });
+    if (!chat) {
+      return res.status(404).json({ success: false, error: "Chat not found" });
     }
 
     return res.status(200).json({
@@ -646,82 +647,82 @@ exports.getChatDetails = async (req, res, next) => {
   }
 };
 
-exports.renameGroup = async(req, res, next) => {
+exports.renameGroup = async (req, res, next) => {
   const chatId = req.params.id;
 
-  const {name} = req.body;
+  const { name } = req.body;
 
   const chat = await Chat.findById(chatId)
 
-    if(!chat){
-      return res.status(404).json({success: false, error: "Chat not found" });
-    }
+  if (!chat) {
+    return res.status(404).json({ success: false, error: "Chat not found" });
+  }
 
-    if(!chat.groupChat){
-      return res.status(400).json({success: false, error: "This is not a group chat" });
-    }
+  if (!chat.groupChat) {
+    return res.status(400).json({ success: false, error: "This is not a group chat" });
+  }
 
-    if(chat.creator.toString() !== req.user._id.toString()){
-      return res.status(403).json({success: false, error: "You are not allowed to rename group" });
-    }
+  if (chat.creator.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ success: false, error: "You are not allowed to rename group" });
+  }
 
-    chat.name = name;
+  chat.name = name;
 
-    await chat.save();
+  await chat.save();
 
-    emitEvent(req, REFETCH_CHATS, chat.members);
+  emitEvent(req, REFETCH_CHATS, chat.members);
 
-    return res.status(200).json({
-      success: true,
-      message: "Group renamed successfully"
-    });
+  return res.status(200).json({
+    success: true,
+    message: "Group renamed successfully"
+  });
 };
 
-exports.deleteChat = async(req, res, next) => {
+exports.deleteChat = async (req, res, next) => {
   const chatId = req.params.id;
 
   const chat = await Chat.findById(chatId)
 
-    if(!chat){
-      return res.status(404).json({success: false, error: "Chat not found" });
-    }
+  if (!chat) {
+    return res.status(404).json({ success: false, error: "Chat not found" });
+  }
 
-    const members = chat.members;
+  const members = chat.members;
 
-    if(chat.groupChat && chat.creator.toString() !== req.user._id.toString()){
-      return res.status(403).json({success: false, error: "You are not allowed to delete the group" });
-    }
+  if (chat.groupChat && chat.creator.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ success: false, error: "You are not allowed to delete the group" });
+  }
 
-    if(!chat.groupChat && !chat.members.includes(req.user._id.toString())){
-      return res.status(403).json({success: false, error: "You are not allowed to delete the chat" });
-    }
+  if (!chat.groupChat && !chat.members.includes(req.user._id.toString())) {
+    return res.status(403).json({ success: false, error: "You are not allowed to delete the chat" });
+  }
 
-// Delete all the messages as well as attachments or any file 
+  // Delete all the messages as well as attachments or any file 
 
-    const messagesWithAttachments = await Message.find({
-      chat: chatId,
-      attachments: { $exists: true, $ne: [] },
-    });
+  const messagesWithAttachments = await Message.find({
+    chat: chatId,
+    attachments: { $exists: true, $ne: [] },
+  });
 
-    const public_ids = [];
+  const public_ids = [];
 
-    messagesWithAttachments.forEach(({attachments}) =>
-      attachments.forEach(({public_id}) => public_ids.push(public_id))
-    );
+  messagesWithAttachments.forEach(({ attachments }) =>
+    attachments.forEach(({ public_id }) => public_ids.push(public_id))
+  );
 
-    await Promise.all([
-      // Delete Files From aws s3
-      // deleteFilesFroms3(public_ids),
-      // chat.deleteOne(),
-      Message.deleteMany({chat: chatId})
-    ])
-    
-    emitEvent(req, REFETCH_CHATS, members);
+  await Promise.all([
+    // Delete Files From aws s3
+    // deleteFilesFroms3(public_ids),
+    // chat.deleteOne(),
+    Message.deleteMany({ chat: chatId })
+  ])
 
-    return res.status(200).json({
-      success: true,
-      message: "Chat deleted successfully"
-    });
+  emitEvent(req, REFETCH_CHATS, members);
+
+  return res.status(200).json({
+    success: true,
+    message: "Chat deleted successfully"
+  });
 };
 
 exports.getMessages = async (req, res, next) => {
@@ -748,6 +749,102 @@ exports.getMessages = async (req, res, next) => {
     messages: messages.reverse(),
     totalPages,
   });
+};
+
+
+exports.get_user_contact_list = async (req, res, next) => {
+
+
+    try {
+      let query = {};
+      const { searchQuery } = req.query;
+  
+      if (searchQuery) {
+        const userId = req.user;
+        console.log("22",userId);
+        query = {
+          $or: [
+            { members: userId }, // Search groups where the user is a member
+            { creator: userId } // Search groups created by the user
+          ],
+          $and: [
+            { groupChat: true }, // Must be a group chat
+            {
+              $or: [
+                { name: { $regex: new RegExp(searchQuery, "i") } },
+                { groupDescription: { $regex: new RegExp(searchQuery, "i") } }
+              ]
+            }
+          ]
+        };
+      } else {
+        query = {
+          members: req.user,
+          groupChat: true,
+          creator: req.user
+        };
+      }
+      // console.log("22",userId);
+  
+      const acceptedMembers = await Request.find({
+        status: 'accepted',
+        $or: [{ receiver: req.user }, { sender: req.user }]
+      });
+  console.log("acceptedMembers",acceptedMembers);
+      const acceptedMemberIds = acceptedMembers.flatMap(request => [request.sender, request.receiver]);
+      console.log("22",acceptedMemberIds);
+  
+      if (Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0) {
+        const chats = await Chat.find(query)
+          .populate({
+            path: "members",
+            // select: "name avatar",
+          });
+  
+        const memberArrays = chats.map(({ members }) => members);
+  
+        const membersArray = [].concat.apply([], memberArrays); // Flatten the array of arrays
+  
+        return res.status(200).json({
+          success: true,
+          members: membersArray
+        });
+  
+      } else {
+        query = {
+          ...query,
+          members: {
+            $in: acceptedMemberIds
+          }
+        };
+  
+        const chats = await Chat.find(query)
+          .populate({
+            path: "members",
+            // select: "name avatar",
+          });
+          console.log("chats",chats);
+  
+        const memberArrays = chats.map(({ members }) => members);
+  
+        const membersArray = [].concat.apply([], memberArrays); // Flatten the array of arrays
+  
+        return res.status(200).json({
+          success: true,
+          members: membersArray
+        });
+  
+      }
+  
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({
+        success: false,
+        error: "Internal Server Error"
+      });
+    }
+ 
+ 
 };
 
 

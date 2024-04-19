@@ -13,7 +13,8 @@ const {
   getChatDetails,
   renameGroup,
   deleteChat,
-  getMessages
+  getMessages,
+  get_user_contact_list
 } = require("../Controller/Chat");
 const { isAuthJWT, authorizeRoles } = require("../Utils/jwt");
 const { attachmentsMulter } = require("../Utils/multer");
@@ -33,12 +34,14 @@ router.route("/leave/:chatId").delete(isAuthJWT, leaveGroup);
 router.route("/addAttachments").post(isAuthJWT, attachmentsMulter, sendAttachments);
 router.route("/message/:id").get(isAuthJWT, getMessages);
 
+router.route("/get_user_contact_list").get(isAuthJWT,get_user_contact_list);
+
+
+
 router.route("/:id") //chatId
   .get(isAuthJWT, getChatDetails)
   .put(isAuthJWT, renameGroup)
   .delete(isAuthJWT, deleteChat);
-
-
 
   
 module.exports = router;
