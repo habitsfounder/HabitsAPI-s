@@ -34,7 +34,7 @@ router.route("/leave/:chatId").delete(isAuthJWT, leaveGroup);
 router.route("/addAttachments").post(isAuthJWT, attachmentsMulter, sendAttachments);
 router.route("/message/:id").get(isAuthJWT, getMessages);
 
-router.route("/get_user_contact_list").get(isAuthJWT,get_user_contact_list);
+router.route("/get_user_contact_list").post(isAuthJWT,get_user_contact_list);
 
 
 

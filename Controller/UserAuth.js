@@ -11,6 +11,10 @@ const { emitEvent } = require("../Utils/jwt");
 const { getOtherMember } = require("../Utils/helper");
 const { v4: uuidv4 } = require('uuid');
 const {RtcTokenBuilder, RtcRole} = require('agora-access-token');
+const server_key="AAAAE-KZEkM:APA91bEDP72perWe7LqgDFtBBs6DOoIYkNHyskJX9k5fOFQPR4fGD3gOF5FZqc1lLbQ0DkkdJuBUrmRTYtmvoi39nsWwBbzjm_PQ1GI4TujTOTF0C3iqvZEMkZ01BnQS-Z3LdBPbQRfr"
+var FCM = require('fcm-node');
+var fcm = new FCM(server_key);
+
 
 const HttpStatus = {
   OK: 200,
@@ -692,13 +696,87 @@ exports.acceptRequest = async (req, res) => {
         error: "Request not found",
       });
     }
+     const senderId = request.sender
+     const receiverId = request.receiver
+     const chat_id = request.chat_id
 
+     console.log("senderId",senderId);
+     console.log("receiverId",receiverId);
+     console.log("chat_id",chat_id);
+
+  const chat = await Chat.findById(chat_id);
+
+  if (!chat) {
+    return res.status(400).json({
+      success: false,
+      error: "group not found",
+    });
+  }
+
+  const user = await User.findById(receiverId);
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      error: "user not found",
+    });
+  }
+
+   console.log("chat.name",chat.name);
+   console.log("user.name",user.name);
+ const user_name = user.name
     // If the status is 'rejected', delete the request and send response
     if (status === 'rejected') {
+
+      var message = {
+        "URL": "https://fcm.googleapis.com/fcm/send",
+        "Header": {
+        "Content-Type": "application/json",
+        "Authorization": "key=<Server_key>"
+         },
+        "BODY": {
+        // to: manager.device_id,
+        to: '',
+        collapse_key: 'green',
+        notification: {
+          "title": ` ${user_name} reject your Request to Join a New Habit Group`,
+          "body": chat.name,     
+          "mutable_content": false,       
+          "sound": "Tri-tone",   
+          },
+          data: {
+          "dl": "reject_group",
+          "group_id": chat_id
+          },
+        }
+      };
+  
+      fcm.send(message, async function (err, response) {
+        console.log("1", message);
+        if (err) {
+          console.log("Something Has Gone Wrong !");
+        } else {
+          console.log("Successfully Sent With Resposne :", response);
+          var body = message.notification.body;
+          console.log("notification body for chat request<sent to gruop members>",body);
+          const add_notification = await Notification.create(
+            {
+              sender_id: receiverId,
+              receiver_id: senderId,
+              chat_id: chat_id,
+              message: message.notification.body,
+              status: 1,
+            })
+         console.log("add_notification",add_notification);
+  
+        }
+  
+        //  console.log("2");
+      })
+
       await request.deleteOne();
       return res.status(200).json({
         success: true,
-        message: "Friend Request Rejected",
+        message: "group Request Rejected",
       });
     }
 
@@ -710,9 +788,56 @@ exports.acceptRequest = async (req, res) => {
     );
     console.log("updatedRequest", updatedRequest);
 
+    var message = {
+      "URL": "https://fcm.googleapis.com/fcm/send",
+      "Header": {
+      "Content-Type": "application/json",
+      "Authorization": "key=<Server_key>"
+       },
+      "BODY": {
+      // to: manager.device_id,
+      to: '',
+      collapse_key: 'green',
+      notification: {
+        "title": ` ${user_name} accepte your Request to Join a New Habit Group`,
+        "body": chat.name,     
+        "mutable_content": false,       
+        "sound": "Tri-tone",   
+        },
+        data: {
+        "dl": "accept_group",
+        "group_id": chat_id
+        },
+      }
+    };
+
+    fcm.send(message, async function (err, response) {
+      console.log("1", message);
+      if (err) {
+        console.log("Something Has Gone Wrong !");
+      } else {
+        console.log("Successfully Sent With Resposne :", response);
+        var body = message.notification.body;
+        console.log("notification body for chat request<sent to gruop members>",body);
+        const add_notification = await Notification.create(
+          {
+            sender_id: receiverId,
+            receiver_id: senderId,
+            chat_id: chat_id,
+            message: message.notification.body,
+            status: 1,
+          })
+       console.log("add_notification",add_notification);
+
+      }
+
+      //  console.log("2");
+    })
+
+
     return res.status(200).json({
       success: true,
-      message: "Friend Request Accepted",
+      message: "group Request Accepted",
       // senderId: request.sender._id
     });
   } catch (error) {
