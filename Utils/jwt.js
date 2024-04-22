@@ -47,6 +47,11 @@ exports.isAuthJWT = async (req, res, next) => {
 
     if (!req.user) {
       req.user = await Admin.findOne({ id: decodedData?.id });
+      if(!req.user){
+        return res
+        .status(401)
+        .json({ success: false, message: "user not found" });
+      }
     }
     if (req.user.activeToken && req.user.activeToken === token) {
       next();

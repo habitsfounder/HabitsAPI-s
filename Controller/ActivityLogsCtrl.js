@@ -146,19 +146,22 @@ exports.getGroupPoints = async (req, res) => {
         membersById[member._id.toString()] = member;
       });
 
+      // Initialize points earned for each user
+      const userPointsMap = {};
 
       // Calculate sum of points earned for each user
-      const userPointsMap = {};
       activityLogs.forEach(log => {
         const userId = log.user_id._id.toString();
-        if (userPointsMap[userId]) {
-          userPointsMap[userId] += log.points_earned;
-        } else {
-          userPointsMap[userId] = log.points_earned;
-        }
-      });
 
-  
+        // Initialize newBalance for each user
+        let newBalance = parseFloat(userPointsMap[userId]) || 0;
+
+        // Update newBalance with points earned from current log
+        newBalance += parseFloat(log.points_earned);
+
+        // Update points earned for the user
+        userPointsMap[userId] = newBalance;
+      });
 
       // Update members array with points and last activity done
       Object.keys(membersById).forEach(memberId => {
@@ -184,6 +187,49 @@ exports.getGroupPoints = async (req, res) => {
 };
 
 
+
+// exports.getGroupPoints = async (req, res) => {
+//   const userId = req.user;
+//   const { groupId } = req.params;
+
+//   try {
+//     const group = await Chat.findOne({ _id: groupId, members: userId }).populate('members').lean();
+
+//     if (!group) {
+//       return res.status(403).json({ error: 'User does not have access to this group.' });
+//     }
+
+//     // Fetch activity logs for the group
+//     const activityLogs = await ActivityLog.find({ chat_id: groupId }).sort({ createdAt: -1 }).populate('user_id').populate('chat_id');
+
+//     if (activityLogs.length > 0) {
+//       // Initialize an object to store points earned by each member
+//       const userPointsMap = {};
+
+//       // Calculate sum of points earned for each user
+//       activityLogs.forEach(log => {
+//         const userId = log.user_id._id.toString();
+//         userPointsMap[userId] = (userPointsMap[userId] || 0) + log.points_earned;
+//       });
+
+//       // Update points_earned field for each member
+//       group.members.forEach(member => {
+//         const memberId = member._id.toString();
+//         member.points_earned = userPointsMap[memberId] || '0';
+//       });
+
+//       // Return the modified data
+//       return res.json({ status: true, message: "get data successfully", data: group.members, max_points: group.max_points });
+
+//     } else {
+//       return res.json({ status: false, message: "activityLogs not created" });
+//     }
+
+//   } catch (error) {
+//     console.error('Error:', error.message);
+//     return res.status(500).json({ error: 'Internal server error' });
+//   }
+// };
 
 
 
