@@ -306,6 +306,7 @@ exports.getMyGroups = async (req, res, next) => {
         })
         .populate({
           path: "habits",
+          
           populate: {
             path: "habit verification",
             models: {
@@ -380,8 +381,13 @@ exports.getMyGroups = async (req, res, next) => {
         })
         .populate("winner_user");
 
-        console.log("11111111111111111111111111111111",chats[0].habits);
+        // console.log("11111111111111111111111111111111",chats[0].habits);
 
+
+
+
+
+        
       const currentDate = new Date();
       const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
         const endDate = new Date(activityEndDate);
