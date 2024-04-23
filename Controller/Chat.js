@@ -8,9 +8,9 @@ const Message = require("../Model/Message");
 const Verification = require("../Model/VerificationMethod");
 const Notification = require("../Model/notification");
 const Request = require("../Model/Request");
-const server_key="AAAAE-KZEkM:APA91bEDP72perWe7LqgDFtBBs6DOoIYkNHyskJX9k5fOFQPR4fGD3gOF5FZqc1lLbQ0DkkdJuBUrmRTYtmvoi39nsWwBbzjm_PQ1GI4TujTOTF0C3iqvZEMkZ01BnQS-Z3LdBPbQRfr"
-var FCM = require('fcm-node');
-var fcm = new FCM(server_key);
+// const server_key="AAAAE-KZEkM:APA91bEDP72perWe7LqgDFtBBs6DOoIYkNHyskJX9k5fOFQPR4fGD3gOF5FZqc1lLbQ0DkkdJuBUrmRTYtmvoi39nsWwBbzjm_PQ1GI4TujTOTF0C3iqvZEMkZ01BnQS-Z3LdBPbQRfr"
+// var FCM = require('fcm-node');
+// var fcm = new FCM(server_key);
 
 const AWS = require('aws-sdk');
 
@@ -92,6 +92,14 @@ exports.newGroupChat = async (req, res, next) => {
       max_points
     });
 
+    const create_user =  await Request.create({
+        sender: req.user, // Assuming sender is the creator of the group
+        receiver: req.user,
+        chat_id: new_data._id,
+        status:'accepted'
+      });
+console.log("create_user",create_user);
+
     emitEvent(req, ALERT, allMembers, `Welcome to ${name} Group`);
     emitEvent(req, REFETCH_CHATS, members);
 
@@ -106,54 +114,57 @@ exports.newGroupChat = async (req, res, next) => {
         chat_id: new_data._id
       });
 
-      var message = {
+          // const users_device_id = await User.findById({_id:memberId})
 
-        "URL": "https://fcm.googleapis.com/fcm/send",
-        "Header": {
-        "Content-Type": "application/json",
-        "Authorization": "key=<Server_key>"
-         },
-        "BODY": {
-        // to: manager.device_id,
-        to: '',
+          // console.log("users_device_id",users_device_id.device_id);
 
-        collapse_key: 'green',
-        notification: {
-          "title": "Requested You to Join a New Habit Group",
-          "body": `${name}`,     
-          "mutable_content": false,       
-          "sound": "Tri-tone",   
-          },
-          data: {
-          "dl": "join_group",
-          "group_id": new_data._id
-          },
-        }
-      };
+//       var message = {
+
+//         "URL": "https://fcm.googleapis.com/fcm/send",
+//         "Header": {
+//         "Content-Type": "application/json",
+//         "Authorization": "key=<Server_key>"
+//          },
+//         "BODY": {
+//         // to: manager.device_id,
+        // token: users_device_id.device_id,
+//         collapse_key: 'green',
+//         notification: {
+//           "title": "Requested You to Join a New Habit Group",
+//           "body": `${name}`,     
+//           "mutable_content": false,       
+//           "sound": "Tri-tone",   
+//           },
+//           data: {
+//           "dl": "join_group",
+//           "group_id": new_data._id
+//           },
+//         }
+//       };
   
-      fcm.send(message, async function (err, response) {
-        console.log("1", message);
-        if (err) {
-          console.log("Something Has Gone Wrong !");
-        } else {
-          console.log("Successfully Sent With Resposne :", response);
-          var body = message.notification.body;
-          console.log("notification body for chat request<sent to gruop members>",body);
+
+// //    // Send the notification
+// admin.messaging().send(message)
+// .then(async (response) => {
+//   console.log('Successfully sent message:', response);
+//           // console.log("Successfully Sent With Resposne :", response);
+//           var body = message.notification.body;
+//           console.log("notification body for chat request<sent to gruop members>",body);
           const add_notification = await Notification.create(
             {
               sender_id: req.user,
               receiver_id: memberId,
               chat_id: new_data._id,
-              message: message.notification.body,
+              message: "Requested You to Join a New Habit Group",
               status: 1,
             })
          console.log("add_notification",add_notification);
-  
-        }
-  
-        //  console.log("2");
-      })
+// })
 
+// .catch((error) => {
+//   console.log("Something Has Gone Wrong !");
+//   console.log('Error sending message:', error);
+// });
 
     });
 
@@ -249,9 +260,203 @@ exports.getMyChat = async (req, res, next) => {
 };
 
 // when not work on verification 
+// exports.getMyGroups = async (req, res, next) => {
 
+//   try {
+//     let query = {};
+//     const { searchQuery } = req.query;
+
+//     if (searchQuery) {
+//       const userId = req.user;
+//       query = {
+//         $or: [
+//           { members: userId }, // Search groups where the user is a member
+//           { creator: userId } // Search groups created by the user
+//         ],
+//         $and: [
+//           { groupChat: true }, // Must be a group chat
+//           {
+//             $or: [
+//               { name: { $regex: new RegExp(searchQuery, "i") } },
+//               { groupDescription: { $regex: new RegExp(searchQuery, "i") } }
+//             ]
+//           }
+//         ]
+//       };
+//     } else {
+//       query = {
+//         members: req.user,
+//         groupChat: true,
+//         creator: req.user
+//       };
+//     }
+//     console.log("req.user ", req.user);
+
+//     const acceptedMembers = await Request.find({
+//       status: 'accepted',
+//       $or: [{ receiver: req.user }, { sender: req.user }]
+//     });
+
+
+//     const acceptedMemberIds = acceptedMembers.flatMap(request => [request.sender, request.receiver]);
+
+//     // Include only groups where all accepted members exist
+
+
+//     console.log("acceptedMemberIds", acceptedMemberIds);
+
+//     if (Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0) {
+//       console.log("11111");
+
+
+//       const chats = await Chat.find(query)
+//         .populate({
+//           path: "members",
+//           // select: "name avatar",
+//         })
+//         .populate({
+//           path: "habits",
+          
+//           populate: {
+//             path: "habit verification",
+//             models: {
+//               path: "Habit",
+//               model: "Habit",
+//             },
+//             models: {
+//               path: "Verification",
+//               model: "Verification",
+//             },
+//           },
+//         })
+//         .populate("winner_user");
+
+//       const currentDate = new Date();
+//       const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
+//         const endDate = new Date(activityEndDate);
+//         const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
+
+//         return {
+//           _id,
+//           groupChat,
+//           name,
+//           habits,
+//           members,
+//           // habit_verification_method,
+//           groupImage,
+//           groupDescription,
+//           activityStartDate,
+//           activityEndDate,
+//           monetaryPotAmount,
+//           mooney_transferred,
+//           daysLeft,
+//           max_points,
+//           winner_user,
+//           active_memberIds: acceptedMemberIds
+
+//         };
+//       });
+
+//       return res.status(200).json({
+//         success: true,
+//         groups
+//       });
+
+//     } else {
+//       query = {
+//         ...query,
+//         members: {
+//           $in: acceptedMemberIds
+//         }
+//       };
+//       // console.log("11111111111111111111111111111111");
+//       const chats = await Chat.find(query)
+//         .populate({
+//           path: "members",
+//           // select: "name avatar",
+//         })
+//         .populate({
+//           path: "habits",
+//           populate: {
+//             path: "habit verification",
+//             models: {
+//               path: "Habit",
+//               model: "Habit",
+//             },
+//             models: {
+//               path: "Habit",
+//               model: "Habit",
+//             },
+//           },
+//         })
+//         .populate("winner_user");
+
+//         // console.log("11111111111111111111111111111111",chats[0].habits);
+
+//       const currentDate = new Date();
+//       const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
+//         const endDate = new Date(activityEndDate);
+//         const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
+       
+//         console.log("habits",habits);
+
+//         // const habitId = "6622546edae07673952f10fa";
+//         // const verificationId = "6622546edae07673952f10fb";
+        
+//         const updatedHabits = habits.map(habit => {
+//           // Check if habit ID and verification ID match the condition
+//           // if (habitId && verificationId) {
+//             // Push the verification object into the verification field of the habit
+//             habit.verification = {
+//               "_id": habit.id,
+//               "name": "Timer",
+//               "logo": "https://habits-attachments.s3.amazonaws.com/2024-4-19/1st.png",
+//               "units": "Hours"
+//             };
+//           // }
+//           return habit;
+//         }); 
+
+//         return {
+//           _id,
+//           groupChat,
+//           name,
+//           habits:updatedHabits,
+//           members,
+//           // habit_verification_method,
+//           groupImage,
+//           groupDescription,
+//           activityStartDate,
+//           activityEndDate,
+//           monetaryPotAmount,
+//           mooney_transferred,
+//           daysLeft,
+//           max_points,
+//           winner_user,
+//           active_memberIds: acceptedMemberIds
+//           // avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
+//         };
+//       });
+//       // console.log("v",groups);    
+//       return res.status(200).json({
+//         success: true,
+//         groups
+//       });
+
+//     }
+
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(500).json({
+//       success: false,
+//       error: "Internal Server Error"
+//     });
+//   }
+// };
+
+
+// right
 exports.getMyGroups = async (req, res, next) => {
-
   try {
     let query = {};
     const { searchQuery } = req.query;
@@ -280,164 +485,89 @@ exports.getMyGroups = async (req, res, next) => {
         creator: req.user
       };
     }
-    console.log("req.user ", req.user);
 
     const acceptedMembers = await Request.find({
       status: 'accepted',
       $or: [{ receiver: req.user }, { sender: req.user }]
     });
 
+    console.log("acceptedMembers========================",acceptedMembers);
+    const acceptedMemberIds = acceptedMembers.flatMap(request => [request.receiver]);
+    console.log("acceptedMemberIds==============",acceptedMemberIds);
 
-    const acceptedMemberIds = acceptedMembers.flatMap(request => [request.sender, request.receiver]);
-
-    // Include only groups where all accepted members exist
-
-
-    console.log("acceptedMemberIds", acceptedMemberIds);
-
+    let chats;
     if (Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0) {
-      console.log("11111");
-
-
-      const chats = await Chat.find(query)
+      chats = await Chat.find(query)
         .populate({
           path: "members",
-          // select: "name avatar",
         })
         .populate({
           path: "habits",
-          
-          populate: {
-            path: "habit verification",
-            models: {
-              path: "Habit",
-              model: "Habit",
-            },
-            models: {
-              path: "Verification",
-              model: "Verification",
-            },
-          },
+          populate: [
+            { path: "habit", model: "Habit" },
+            { path: "verification" } // Populate the verification field
+          ],
         })
         .populate("winner_user");
-
-      const currentDate = new Date();
-      const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
-        const endDate = new Date(activityEndDate);
-        const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
-
-        return {
-          _id,
-          groupChat,
-          name,
-          habits,
-          members,
-          // habit_verification_method,
-          groupImage,
-          groupDescription,
-          activityStartDate,
-          activityEndDate,
-          monetaryPotAmount,
-          mooney_transferred,
-          daysLeft,
-          max_points,
-          winner_user,
-          active_memberIds: acceptedMemberIds
-
-        };
-      });
-
-      return res.status(200).json({
-        success: true,
-        groups
-      });
-
     } else {
       query = {
         ...query,
-        members: {
-          $in: acceptedMemberIds
-        }
+        members: { $in: acceptedMemberIds }
       };
-      // console.log("11111111111111111111111111111111");
-      const chats = await Chat.find(query)
+      chats = await Chat.find(query)
         .populate({
           path: "members",
-          // select: "name avatar",
+          select: "-password -email"
         })
         .populate({
           path: "habits",
-          populate: {
-            path: "habit verification",
-            models: {
-              path: "Habit",
-              model: "Habit",
-            },
-            models: {
-              path: "Habit",
-              model: "Habit",
-            },
-          },
+          populate: [
+            { path: "habit", model: "Habit" }
+          ],
         })
         .populate("winner_user");
-
-        // console.log("11111111111111111111111111111111",chats[0].habits);
-
-
-
-
-
-        
-      const currentDate = new Date();
-      const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
-        const endDate = new Date(activityEndDate);
-        const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
-       
-        const habitId = "6622546edae07673952f10fa";
-        const verificationId = "6622546edae07673952f10fb";
-        
-        const updatedHabits = habits.map(habit => {
-          // Check if habit ID and verification ID match the condition
-          if (habitId && verificationId) {
-            // Push the verification object into the verification field of the habit
-            habit.verification = {
-              "_id": verificationId,
-              "name": "Timer",
-              "logo": "https://habits-attachments.s3.amazonaws.com/2024-4-19/1st.png",
-              "units": "Hours"
-            };
-          }
-          return habit;
-        }); 
-
-        return {
-          _id,
-          groupChat,
-          name,
-          habits:updatedHabits,
-          members,
-          // habit_verification_method,
-          groupImage,
-          groupDescription,
-          activityStartDate,
-          activityEndDate,
-          monetaryPotAmount,
-          mooney_transferred,
-          daysLeft,
-          max_points,
-          winner_user,
-          active_memberIds: acceptedMemberIds
-          // avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
-        };
-      });
-      // console.log("v",groups);    
-      return res.status(200).json({
-        success: true,
-        groups
-      });
-
     }
 
+    const currentDate = new Date();
+    const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
+      const endDate = new Date(activityEndDate);
+             const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
+
+
+      return {
+        _id,
+        groupChat,
+        name,
+        habits: habits.map(habit => {
+          if (habit.verification) {
+            const verificationDetails = habit.habit.details.filter(detail => detail._id.toString() === habit.verification.toString());
+            if (verificationDetails.length > 0) {
+              return {
+                ...habit.toObject(),
+                verificationDetails 
+              };
+            } 
+          }
+          return habit.toObject(); 
+        }),
+        members,
+        groupImage,
+        groupDescription,
+        activityStartDate,
+        activityEndDate,
+        monetaryPotAmount,
+        mooney_transferred,
+        daysLeft,
+        max_points,
+        winner_user,
+        active_memberIds: acceptedMemberIds,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      groups
+    });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -446,111 +576,6 @@ exports.getMyGroups = async (req, res, next) => {
     });
   }
 };
-
-
-
-// exports.getMyGroups = async (req, res, next) => {
-//   try {
-//     const userId = req.user;
-//     let query = {
-//       $or: [
-//         { members: userId }, // Search groups where the user is a member
-//         { creator: userId } // Search groups created by the user
-//       ],
-//       groupChat: true
-//     };
-
-//     const { searchQuery } = req.query;
-//     if (searchQuery) {
-//       query.$and = [
-//         {
-//           $or: [
-//             { name: { $regex: new RegExp(searchQuery, "i") } },
-//             { groupDescription: { $regex: new RegExp(searchQuery, "i") } }
-//           ]
-//         }
-//       ];
-//     }
-
-//     const chats = await Chat.find(query)
-//   .populate({
-//     path: "members",
-//   })
-//   .populate({
-//     path: "habits",
-//     populate: [
-//       {
-//         path: "habit",
-//         model: "Habit",
-//       },
-//       {
-//         path: "verification",
-//         model: "Verification",
-//       },
-//     ],
-//   })
-//   .populate("winner_user");
-
-// const currentDate = new Date();
-// const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, money_transferred, max_points, winner_user }) => {
-//   const endDate = new Date(activityEndDate);
-//   const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
-
-//   // Iterate through habits to add verification
-// // Fetch habit and verification IDs from the database
-// const habitId = "6622546edae07673952f10fa";
-// const verificationId = "6622546edae07673952f10fb";
-
-// const updatedHabits = habits.map(habit => {
-//   // Check if habit ID and verification ID match the condition
-//   if (habit.habit._id.toString() === habitId && habit.verification._id.toString() === verificationId) {
-//     // Push the verification object into the verification field of the habit
-//     habit.verification = {
-//       "_id": verificationId,
-//       "name": "Timer",
-//       "logo": "https://habits-attachments.s3.amazonaws.com/2024-4-19/1st.png",
-//       "units": "Hours"
-//     };
-//   }
-//   return habit;
-// }); 
-
-
-
-//   return {
-//     _id,
-//     groupChat,
-//     name,
-//     habits: updatedHabits, // Use the updated habits array
-//     members,
-//     groupImage,
-//     groupDescription,
-//     activityStartDate,
-//     activityEndDate,
-//     monetaryPotAmount,
-//     money_transferred,
-//     daysLeft,
-//     max_points,
-//     winner_user,
-//     // active_memberIds: acceptedMemberIds
-//   };
-// });
-
-// return res.status(200).json({
-//   success: true,
-//   groups
-// });
-
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(500).json({
-//       success: false,
-//       error: "Internal Server Error"
-//     });
-//   }
-// };
-
-
 
 
 
@@ -988,4 +1013,35 @@ exports.get_user_contact_list = async (req, res, next) => {
  
 };
 
+
+
+exports.add_message = async (req, res, next) => {
+// router.post('/add-message', authMiddleware, async (req, res) => {
+  try {
+    const { group_id, data } = req.body;
+
+    // Validate the request body
+    if (!group_id || !data) {
+      return res.status(400).json({ error: "Group ID and data are required." });
+    }
+
+    // Create a new message
+    const newMessage = new Message({
+      chat:group_id,
+      sender:req.user,
+      content:data.message,
+      type:data.type,
+      activity_verification:data.activity_verification,
+      date:data.date
+    });
+
+    // Save the message to the database
+    await newMessage.save();
+
+    return res.json({ status: true, message: "Message added successfully." });
+  } catch (error) {
+    console.error('Error:', error.message);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
