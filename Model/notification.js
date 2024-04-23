@@ -25,13 +25,17 @@ const NotificationSchema = new mongoose.Schema(
         ref: "Chat",
         required: true,
       },
-     receiver_id: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
- 
+    //  receiver_id: [
+    //   {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "User",
+    //   },
+    // ],
+    receiver_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    }
   },
   {
     timestamps: true,

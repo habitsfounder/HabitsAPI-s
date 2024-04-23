@@ -11,9 +11,21 @@ const { emitEvent } = require("../Utils/jwt");
 const { getOtherMember } = require("../Utils/helper");
 const { v4: uuidv4 } = require('uuid');
 const {RtcTokenBuilder, RtcRole} = require('agora-access-token');
-const server_key="AAAAE-KZEkM:APA91bEDP72perWe7LqgDFtBBs6DOoIYkNHyskJX9k5fOFQPR4fGD3gOF5FZqc1lLbQ0DkkdJuBUrmRTYtmvoi39nsWwBbzjm_PQ1GI4TujTOTF0C3iqvZEMkZ01BnQS-Z3LdBPbQRfr"
-var FCM = require('fcm-node');
-var fcm = new FCM(server_key);
+const Notification =require("../Model/notification")
+
+// const server_key="AAAAE-KZEkM:APA91bEDP72perWe7LqgDFtBBs6DOoIYkNHyskJX9k5fOFQPR4fGD3gOF5FZqc1lLbQ0DkkdJuBUrmRTYtmvoi39nsWwBbzjm_PQ1GI4TujTOTF0C3iqvZEMkZ01BnQS-Z3LdBPbQRfr"
+// var FCM = require('fcm-node');
+// var fcm = new FCM(server_key);
+
+const admin = require('firebase-admin');
+
+// const serviceAccount = require('../habits-de1c4-b91a247d7e96.json');
+
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount)
+// });
+
+// Now you can use admin SDK methods to send notifications
 
 
 const HttpStatus = {
@@ -680,12 +692,198 @@ exports.getMyFriends = async (req, res) => {
   }
 }
 
+// exports.acceptRequest = async (req, res) => {
+//   try {
+//     const { requestId, status } = req.body;
+
+//     // Find the request by its ID and populate sender and receiver details
+//     const request = await Request.findById(requestId)
+//       .populate("sender", "name")
+//       .populate("receiver", "name");
+
+//     // Check if the request exists
+//     if (!request) {
+//       return res.status(400).json({
+//         success: false,
+//         error: "Request not found",
+//       });
+//     }
+//      const senderId = request.sender
+//      const receiverId = request.receiver
+//      const chat_id = request.chat_id
+
+//      console.log("senderId",senderId);
+//      console.log("receiverId",receiverId);
+//      console.log("chat_id",chat_id);
+
+//   const chat = await Chat.findById(chat_id);
+
+//   if (!chat) {
+//     return res.status(400).json({
+//       success: false,
+//       error: "group not found",
+//     });
+//   }
+
+// //   const msg_sender = await User.findById(receiverId);
+// //   if (!msg_sender) {
+// //     return res.status(400).json({
+// //       success: false,
+// //       error: "user not found",
+// //     });
+// //   }
+// //   const msg_receiver = await User.findById(senderId);
+// //   if (!msg_receiver) {
+// //     return res.status(400).json({
+// //       success: false,
+// //       error: "user not found",
+// //     });
+// //   }
+
+// //    console.log("chat.name",chat.name);
+// //    console.log("msg_sender.name",msg_sender.name);
+// //   //  console.log("user.name",user.name);
+
+// //  const msg_sender_name = msg_sender.name
+// //  const msg_receiver_device= msg_receiver.device_id
+
+//     // If the status is 'rejected', delete the request and send response
+//     if (status === 'rejected') {
+
+// //       var message = {
+// //         "URL": "https://fcm.googleapis.com/fcm/send",
+// //         "Header": {
+// //         "Content-Type": "application/json",
+// //         "Authorization": "key=<Server_key>"
+// //          },
+// //         "BODY": {
+// //         // to: manager.device_id,
+// //         token: msg_receiver_device,
+// //         collapse_key: 'green',
+// //         notification: {
+// //           "title": ` ${msg_sender} reject your Request to Join a New Habit Group`,
+// //           "body": chat.name,     
+// //           "mutable_content": false,       
+// //           "sound": "Tri-tone",   
+// //           },
+// //           data: {
+// //           "dl": "reject_group",
+// //           "group_id": chat_id
+// //           },
+// //         }
+// //       };
+// //       console.log("1", message);
+
+// //   // Send the notification
+// // admin.messaging().send(message)
+// // .then(async (response) => {
+// //   console.log('Successfully sent message:', response);
+// //           // console.log("Successfully Sent With Resposne :", response);
+// //           var body = message.notification.body;
+// //           console.log("notification body for chat request<sent to gruop members>",body);
+// //           const add_notification = await Notification.create(
+// //             {
+// //               sender_id: receiverId,
+// //               receiver_id: senderId,
+// //               chat_id: chat_id,
+// //               message: message.notification.body,
+// //               status: 1,
+// //             })
+// //          console.log("add_notification",add_notification);
+// // })
+// // .catch((error) => {
+// //   console.log("Something Has Gone Wrong !");
+// //   console.log('Error sending message:', error);
+// // });
+
+//       await request.deleteOne();
+//       return res.status(200).json({
+//         success: true,
+//         message: "group Request Rejected",
+//       });
+//     }
+
+//   //   Update the status of the request to 'accepted'
+//   const updatedRequest = await Request.findByIdAndUpdate(
+//       requestId,
+//       { status: 'accepted' }, // Updated status object
+//       { new: true }
+//     );
+//     console.log("updatedRequest", updatedRequest);
+
+// //     var message = {
+// //       "URL": "https://fcm.googleapis.com/fcm/send",
+// //       "Header": {
+// //       "Content-Type": "application/json",
+// //       "Authorization": "key=<Server_key>"
+// //        },
+// //       "BODY": {
+// //       // to: manager.device_id,
+// //        token: msg_receiver_device,
+// //       collapse_key: 'green',
+// //       notification: {
+// //         "title": ` ${msg_sender} accepte your Request to Join a New Habit Group`,
+// //         "body": chat.name,     
+// //         "mutable_content": false,       
+// //         "sound": "Tri-tone",   
+// //         },
+// //         data: {
+// //         "dl": "accept_group",
+// //         "group_id": chat_id
+// //         },
+// //       }
+// //     };
+
+// //    // Send the notification
+// // admin.messaging().send(message)
+// // .then(async (response) => {
+// //   console.log('Successfully sent message:', response);
+// //           // console.log("Successfully Sent With Resposne :", response);
+// //           var body = message.notification.body;
+// //           console.log("notification body for chat request<sent to gruop members>",body);
+// //           const add_notification = await Notification.create(
+// //             {
+// //               sender_id: receiverId,
+// //               receiver_id: senderId,
+// //               chat_id: chat_id,
+// //               message: message.notification.body,
+// //               status: 1,
+// //             })
+// //          console.log("add_notification",add_notification);
+// // })
+
+// // .catch((error) => {
+// //   console.log("Something Has Gone Wrong !");
+// //   console.log('Error sending message:', error);
+// // });
+
+// return res.status(200).json({
+//       success: true,
+//       message: "group Request Accepted",
+//       // senderId: request.sender._id
+// });
+
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       success: false,
+//       error: "Internal Server Error"
+//     });
+//   }
+// };
+
+
+
+
 exports.acceptRequest = async (req, res) => {
+  console.log(req.user._id)
   try {
     const { requestId, status } = req.body;
 
     // Find the request by its ID and populate sender and receiver details
-    const request = await Request.findById(requestId)
+    const request = await Request.findOne({
+      chat_id:requestId,
+      receiver:req.user._id})
       .populate("sender", "name")
       .populate("receiver", "name");
 
@@ -713,65 +911,76 @@ exports.acceptRequest = async (req, res) => {
     });
   }
 
-  const user = await User.findById(receiverId);
-  if (!user) {
-    return res.status(400).json({
-      success: false,
-      error: "user not found",
-    });
-  }
+//   const msg_sender = await User.findById(receiverId);
+//   if (!msg_sender) {
+//     return res.status(400).json({
+//       success: false,
+//       error: "user not found",
+//     });
+//   }
+//   const msg_receiver = await User.findById(senderId);
+//   if (!msg_receiver) {
+//     return res.status(400).json({
+//       success: false,
+//       error: "user not found",
+//     });
+//   }
 
-   console.log("chat.name",chat.name);
-   console.log("user.name",user.name);
- const user_name = user.name
+//    console.log("chat.name",chat.name);
+//    console.log("msg_sender.name",msg_sender.name);
+//   //  console.log("user.name",user.name);
+
+//  const msg_sender_name = msg_sender.name
+//  const msg_receiver_device= msg_receiver.device_id
+
     // If the status is 'rejected', delete the request and send response
     if (status === 'rejected') {
 
-      var message = {
-        "URL": "https://fcm.googleapis.com/fcm/send",
-        "Header": {
-        "Content-Type": "application/json",
-        "Authorization": "key=<Server_key>"
-         },
-        "BODY": {
-        // to: manager.device_id,
-        to: '',
-        collapse_key: 'green',
-        notification: {
-          "title": ` ${user_name} reject your Request to Join a New Habit Group`,
-          "body": chat.name,     
-          "mutable_content": false,       
-          "sound": "Tri-tone",   
-          },
-          data: {
-          "dl": "reject_group",
-          "group_id": chat_id
-          },
-        }
-      };
-  
-      fcm.send(message, async function (err, response) {
-        console.log("1", message);
-        if (err) {
-          console.log("Something Has Gone Wrong !");
-        } else {
-          console.log("Successfully Sent With Resposne :", response);
-          var body = message.notification.body;
-          console.log("notification body for chat request<sent to gruop members>",body);
-          const add_notification = await Notification.create(
-            {
-              sender_id: receiverId,
-              receiver_id: senderId,
-              chat_id: chat_id,
-              message: message.notification.body,
-              status: 1,
-            })
-         console.log("add_notification",add_notification);
-  
-        }
-  
-        //  console.log("2");
-      })
+//       var message = {
+//         "URL": "https://fcm.googleapis.com/fcm/send",
+//         "Header": {
+//         "Content-Type": "application/json",
+//         "Authorization": "key=<Server_key>"
+//          },
+//         "BODY": {
+//         // to: manager.device_id,
+//         token: msg_receiver_device,
+//         collapse_key: 'green',
+//         notification: {
+//           "title": ` ${msg_sender} reject your Request to Join a New Habit Group`,
+//           "body": chat.name,     
+//           "mutable_content": false,       
+//           "sound": "Tri-tone",   
+//           },
+//           data: {
+//           "dl": "reject_group",
+//           "group_id": chat_id
+//           },
+//         }
+//       };
+//       console.log("1", message);
+
+//   // Send the notification
+// admin.messaging().send(message)
+// .then(async (response) => {
+//   console.log('Successfully sent message:', response);
+//           // console.log("Successfully Sent With Resposne :", response);
+//           var body = message.notification.body;
+//           console.log("notification body for chat request<sent to gruop members>",body);
+//           const add_notification = await Notification.create(
+//             {
+//               sender_id: receiverId,
+//               receiver_id: senderId,
+//               chat_id: chat_id,
+//               message: message.notification.body,
+//               status: 1,
+//             })
+//          console.log("add_notification",add_notification);
+// })
+// .catch((error) => {
+//   console.log("Something Has Gone Wrong !");
+//   console.log('Error sending message:', error);
+// });
 
       await request.deleteOne();
       return res.status(200).json({
@@ -781,65 +990,74 @@ exports.acceptRequest = async (req, res) => {
     }
 
   //   Update the status of the request to 'accepted'
-    const updatedRequest = await Request.findByIdAndUpdate(
-      requestId,
-      { status: 'accepted' }, // Updated status object
-      { new: true }
-    );
+ // Update the status of the request to 'accepted'
+const updatedRequest = await Request.findOneAndUpdate(
+  {
+    chat_id: requestId,
+    receiver: req.user._id
+  },
+  { 
+    status: 'accepted' 
+  },
+  { 
+    new: true 
+  }
+);
+
     console.log("updatedRequest", updatedRequest);
 
-    var message = {
-      "URL": "https://fcm.googleapis.com/fcm/send",
-      "Header": {
-      "Content-Type": "application/json",
-      "Authorization": "key=<Server_key>"
-       },
-      "BODY": {
-      // to: manager.device_id,
-      to: '',
-      collapse_key: 'green',
-      notification: {
-        "title": ` ${user_name} accepte your Request to Join a New Habit Group`,
-        "body": chat.name,     
-        "mutable_content": false,       
-        "sound": "Tri-tone",   
-        },
-        data: {
-        "dl": "accept_group",
-        "group_id": chat_id
-        },
-      }
-    };
+//     var message = {
+//       "URL": "https://fcm.googleapis.com/fcm/send",
+//       "Header": {
+//       "Content-Type": "application/json",
+//       "Authorization": "key=<Server_key>"
+//        },
+//       "BODY": {
+//       // to: manager.device_id,
+//        token: msg_receiver_device,
+//       collapse_key: 'green',
+//       notification: {
+//         "title": ` ${msg_sender} accepte your Request to Join a New Habit Group`,
+//         "body": chat.name,     
+//         "mutable_content": false,       
+//         "sound": "Tri-tone",   
+//         },
+//         data: {
+//         "dl": "accept_group",
+//         "group_id": chat_id
+//         },
+//       }
+//     };
 
-    fcm.send(message, async function (err, response) {
-      console.log("1", message);
-      if (err) {
-        console.log("Something Has Gone Wrong !");
-      } else {
-        console.log("Successfully Sent With Resposne :", response);
-        var body = message.notification.body;
-        console.log("notification body for chat request<sent to gruop members>",body);
-        const add_notification = await Notification.create(
-          {
-            sender_id: receiverId,
-            receiver_id: senderId,
-            chat_id: chat_id,
-            message: message.notification.body,
-            status: 1,
-          })
-       console.log("add_notification",add_notification);
+//    // Send the notification
+// admin.messaging().send(message)
+// .then(async (response) => {
+//   console.log('Successfully sent message:', response);
+//           // console.log("Successfully Sent With Resposne :", response);
+//           var body = message.notification.body;
+//           console.log("notification body for chat request<sent to gruop members>",body);
+//           const add_notification = await Notification.create(
+//             {
+//               sender_id: receiverId,
+//               receiver_id: senderId,
+//               chat_id: chat_id,
+//               message: message.notification.body,
+//               status: 1,
+//             })
+//          console.log("add_notification",add_notification);
+// })
 
-      }
+// .catch((error) => {
+//   console.log("Something Has Gone Wrong !");
+//   console.log('Error sending message:', error);
+// });
 
-      //  console.log("2");
-    })
-
-
-    return res.status(200).json({
+return res.status(200).json({
       success: true,
       message: "group Request Accepted",
       // senderId: request.sender._id
-    });
+});
+
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -848,6 +1066,8 @@ exports.acceptRequest = async (req, res) => {
     });
   }
 };
+
+
 
 exports.join_channel = async (req, res ,next) => {
 
@@ -909,3 +1129,22 @@ return res.json({ 'rtcToken': token,'generatedchannelName':generatedchannelName
 });
 }
 
+
+
+exports.getmyNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({ receiver_id: req.user._id })
+      .populate({
+        path:'receiver_id',
+        select:'name avatar'
+      })
+
+    if (!notifications || notifications.length === 0) {
+      return res.status(404).json({ status:false,message: 'Notifications not found' });
+    }
+
+    return res.status(200).json({status:true,message: 'get all notifications' ,data:notifications });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};

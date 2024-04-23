@@ -12,6 +12,10 @@ const attachmentSchema = new mongoose.Schema({
 const messageSchema = new mongoose.Schema(
   {
     content: String,
+    type:String,
+    activity_verification:String,
+    date:String,
+    // date:
     attachments: [attachmentSchema],
     sender: {
       type: mongoose.Schema.Types.ObjectId,
