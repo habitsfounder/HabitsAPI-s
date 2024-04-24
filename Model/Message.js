@@ -27,6 +27,9 @@ const messageSchema = new mongoose.Schema(
       ref: "Chat",
       required: true,
     },
+    meta_data: {
+      type: mongoose.Schema.Types.Mixed  // Change the type to accept any data type
+    },
   },
   {
     timestamps: true,
