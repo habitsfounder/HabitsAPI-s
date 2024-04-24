@@ -1090,6 +1090,9 @@ exports.get_user_contact_list = async (req, res, next) => {
 
 
 
+
+
+
 exports.add_message = async (req, res, next) => {
   try {
     const { group_id, data } = req.body;
@@ -1106,7 +1109,8 @@ exports.add_message = async (req, res, next) => {
       content: data.message,
       type: data.type,
       activity_verification: data.activity_verification,
-      date: data.date
+      date: data.date,
+      meta_data:data.meta_data
     });
 
     // console.log("111116666666661");
@@ -1116,7 +1120,7 @@ exports.add_message = async (req, res, next) => {
 // console.log("add_data",add_data);
     // Emit the new message to the chat room
     const io = req.app.get("io");
-  const newmsg = io.to(group_id).emit("new-message", newMessage);
+  const newmsg = io.to(group_id).emit("NEW_MESSAGE", newMessage);
     // console.log("io",io);
     console.log("newMessage",newmsg);
 

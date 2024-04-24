@@ -1140,7 +1140,7 @@ exports.getmyNotifications = async (req, res) => {
       })
 
     if (!notifications || notifications.length === 0) {
-      return res.status(404).json({ status:false,message: 'Notifications not found' });
+      return res.status(404).json({ status:false,message: 'Notifications not found'  ,data:[]});
     }
 
     return res.status(200).json({status:true,message: 'get all notifications' ,data:notifications });
