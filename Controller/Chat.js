@@ -9,6 +9,8 @@ const Verification = require("../Model/VerificationMethod");
 const Notification = require("../Model/notification");
 const Request = require("../Model/Request");
 const { io,to } = require("../index");
+const ActivityLog = require("../Model/ActivityLogs");
+
 // const server_key="AAAAE-KZEkM:APA91bEDP72perWe7LqgDFtBBs6DOoIYkNHyskJX9k5fOFQPR4fGD3gOF5FZqc1lLbQ0DkkdJuBUrmRTYtmvoi39nsWwBbzjm_PQ1GI4TujTOTF0C3iqvZEMkZ01BnQS-Z3LdBPbQRfr"
 // var FCM = require('fcm-node');
 // var fcm = new FCM(server_key);
@@ -459,6 +461,7 @@ exports.getMyChat = async (req, res, next) => {
 // right
 exports.getMyGroups = async (req, res, next) => {
   try {
+    let lastWinnerId
     let query = {};
     const { searchQuery } = req.query;
 
@@ -565,9 +568,110 @@ exports.getMyGroups = async (req, res, next) => {
       };
     });
 
+    groups.forEach(async ({ members, _id, activityEndDate, winner_user }) => {
+      const today = new Date();
+      console.log("_id", _id);
+      if (activityEndDate < today) { // Compare dates properly
+        console.log("members", members);
+    
+          console.log("1")
+          const group = await Chat.findOne({ _id: _id, members: members }).populate('members').lean();
+          console.log("group",group);
+
+  
+          // if (!group) {
+          //   return res.status(403).json({ error: 'User does not have access to this group.' });
+          // }
+    
+          // Fetch activity logs for the group
+          const activityLogs = await ActivityLog.find({ chat_id: _id }).populate('user_id').populate('chat_id');
+    
+         console.log("activityLogs",activityLogs);
+
+          if (activityLogs.length > 0) {
+            // Group members by their IDs
+            const membersById = {};
+            console.log("44444");
+            group.members.forEach(member => {
+              console.log("member",member);
+              membersById[member._id.toString()] = member;
+            });
+    
+            // Initialize points earned for each user
+            const userPointsMap = {};
+    
+            // Calculate sum of points earned for each user
+            activityLogs.forEach(log => {
+              const userId = log.user_id._id.toString();
+    console.log("userId",userId);
+              // Initialize newBalance for each user
+              let newBalance = parseFloat(userPointsMap[userId]) || 0;
+    
+              // Update newBalance with points earned from current log
+              newBalance += parseFloat(log.points_earned);
+    
+              // Update points earned for the user
+              userPointsMap[userId] = newBalance;
+              console.log("newBalance",newBalance);
+            });
+    
+            // Update members array with points and last activity done
+            Object.keys(membersById).forEach(memberId => {
+              const member = membersById[memberId];
+              member.points_earned = userPointsMap[memberId] || '0';
+              const correspondingLog = activityLogs.find(log => log.user_id._id.toString() === memberId);
+              member.activity_done = correspondingLog ? correspondingLog.activity_done : '';
+            });
+    
+            // Convert the object of members back to an array
+            const groupedMembers = Object.values(membersById);
+            groupedMembers.sort((a, b) => parseFloat(b.points_earned) - parseFloat(a.points_earned));
+    console.log("groupedMembers",groupedMembers[0]._id);
+    // console.log("group",group.winner_user);
+    const last_id = groupedMembers[0]._id
+    
+//     if (groupedMembers.length > 0) {
+
+//       const updatedActivityLog = await Chat.findByIdAndUpdate(
+//         _id,
+//         { $addToSet: { winner_user: last_id } }, // Use $addToSet to add the new winner_user if it doesn't already exist
+//         { new: true }
+//       );
+//      group.winner_user.push(last_id);
+// // console.log("updateduser",updateduser);
+      
+//     }
+
+
+
+ lastWinnerId = groupedMembers.length > 0 ? groupedMembers[0]._id : null;
+
+if (lastWinnerId && !group.winner_user.includes(lastWinnerId)) {
+  await Chat.findByIdAndUpdate(
+    group._id,
+    { $addToSet: { winner_user: lastWinnerId } },
+    { new: true }
+  );
+  // groups.winner_user.push(lastWinnerId);
+}
+    // console.log("winner_user",updatedActivityLog);
+  // return res.status(200).json({
+  //     success: true,
+  //     groups:group,
+      
+  //   });
+            // return res.json({ status: true, message: "Data fetched successfully", groups: groups, max_points: group.max_points });
+    
+          } 
+      }
+    });
+    
+  // groups.winner_user.push(lastWinnerId);
+    
     return res.status(200).json({
       success: true,
-      groups
+      groups,
+      
     });
   } catch (error) {
     console.log(error);
