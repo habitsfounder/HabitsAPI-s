@@ -8,6 +8,7 @@ const Message = require("../Model/Message");
 const Verification = require("../Model/VerificationMethod");
 const Notification = require("../Model/notification");
 const Request = require("../Model/Request");
+const { io,to } = require("../index");
 // const server_key="AAAAE-KZEkM:APA91bEDP72perWe7LqgDFtBBs6DOoIYkNHyskJX9k5fOFQPR4fGD3gOF5FZqc1lLbQ0DkkdJuBUrmRTYtmvoi39nsWwBbzjm_PQ1GI4TujTOTF0C3iqvZEMkZ01BnQS-Z3LdBPbQRfr"
 // var FCM = require('fcm-node');
 // var fcm = new FCM(server_key);
@@ -866,6 +867,7 @@ exports.deleteChat = async (req, res, next) => {
   });
 };
 
+
 exports.getMessages = async (req, res, next) => {
   const chatId = req.params.id;
   const { page = 1 } = req.query;
@@ -891,6 +893,47 @@ exports.getMessages = async (req, res, next) => {
     totalPages,
   });
 };
+
+
+// exports.getMessages = async (req, res, next) => {
+//   const chatId = req.params.id;
+//   const { page = 1 } = req.query;
+
+//   const limit = 20;
+//   const skip = (page - 1) * limit;
+
+//   try {
+//     // Check if io is defined on the request app
+//     if (!req.app.io) {
+//       throw new Error('Socket.IO is not initialized');
+//     }
+
+//     const [messages, totalMessagesCount] = await Promise.all([
+//       Message.find({ chat: chatId })
+//         .sort({ createdAt: -1 })
+//         .skip(skip)
+//         .limit(limit)
+//         .populate("sender", "name avatar")
+//         .lean(),
+//       Message.countDocuments({ chat: chatId }),
+//     ]);
+
+//     const totalPages = Math.ceil(totalMessagesCount / limit) || 0;
+
+//     // Emit messages to the chat room if io is defined
+//     req.app.io.to(chatId).emit("chat-messages", messages.reverse());
+
+//     return res.status(200).json({
+//       success: true,
+//       messages,
+//       totalPages,
+//     });
+//   } catch (error) {
+//     console.error("Error:", error.message);
+//     return res.status(500).json({ error: "Internal server error" });
+//   }
+// };
+
 
 
 exports.get_user_contact_list = async (req, res, next) => {
@@ -1015,8 +1058,39 @@ exports.get_user_contact_list = async (req, res, next) => {
 
 
 
+// exports.add_message = async (req, res, next) => {
+// // router.post('/add-message', authMiddleware, async (req, res) => {
+//   try {
+//     const { group_id, data } = req.body;
+
+//     // Validate the request body
+//     if (!group_id || !data) {
+//       return res.status(400).json({ error: "Group ID and data are required." });
+//     }
+
+//     // Create a new message
+//     const newMessage = new Message({
+//       chat:group_id,
+//       sender:req.user,
+//       content:data.message,
+//       type:data.type,
+//       activity_verification:data.activity_verification,
+//       date:data.date
+//     });
+
+//     // Save the message to the database
+//     await newMessage.save();
+
+//     return res.json({ status: true, message: "Message added successfully." });
+//   } catch (error) {
+//     console.error('Error:', error.message);
+//     return res.status(500).json({ error: 'Internal server error' });
+//   }
+// };
+
+
+
 exports.add_message = async (req, res, next) => {
-// router.post('/add-message', authMiddleware, async (req, res) => {
   try {
     const { group_id, data } = req.body;
 
@@ -1024,19 +1098,28 @@ exports.add_message = async (req, res, next) => {
     if (!group_id || !data) {
       return res.status(400).json({ error: "Group ID and data are required." });
     }
-
+// console.log("111111");
     // Create a new message
     const newMessage = new Message({
-      chat:group_id,
-      sender:req.user,
-      content:data.message,
-      type:data.type,
-      activity_verification:data.activity_verification,
-      date:data.date
+      chat: group_id,
+      sender: req.user,
+      content: data.message,
+      type: data.type,
+      activity_verification: data.activity_verification,
+      date: data.date
     });
 
+    // console.log("111116666666661");
+
     // Save the message to the database
-    await newMessage.save();
+   const add_data =  await newMessage.save();
+// console.log("add_data",add_data);
+    // Emit the new message to the chat room
+    const io = req.app.get("io");
+  const newmsg = io.to(group_id).emit("new-message", newMessage);
+    // console.log("io",io);
+    console.log("newMessage",newmsg);
+
 
     return res.json({ status: true, message: "Message added successfully." });
   } catch (error) {
@@ -1044,4 +1127,3 @@ exports.add_message = async (req, res, next) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
-
