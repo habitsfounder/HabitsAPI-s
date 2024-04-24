@@ -173,6 +173,8 @@ exports.getGroupPoints = async (req, res) => {
 
       // Convert the object of members back to an array
       const groupedMembers = Object.values(membersById);
+      groupedMembers.sort((a, b) => parseFloat(b.points_earned) - parseFloat(a.points_earned));
+
 
       return res.json({ status: true, message: "get data successfully", data: groupedMembers, max_points: group.max_points });
 
