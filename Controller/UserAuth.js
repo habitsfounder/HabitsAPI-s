@@ -911,76 +911,59 @@ exports.acceptRequest = async (req, res) => {
     });
   }
 
-//   const msg_sender = await User.findById(receiverId);
-//   if (!msg_sender) {
-//     return res.status(400).json({
-//       success: false,
-//       error: "user not found",
-//     });
-//   }
-//   const msg_receiver = await User.findById(senderId);
-//   if (!msg_receiver) {
-//     return res.status(400).json({
-//       success: false,
-//       error: "user not found",
-//     });
-//   }
+  const msg_sender = await User.findById(receiverId);
+  const msg_receiver = await User.findById(senderId);
 
-//    console.log("chat.name",chat.name);
-//    console.log("msg_sender.name",msg_sender.name);
-//   //  console.log("user.name",user.name);
-
-//  const msg_sender_name = msg_sender.name
-//  const msg_receiver_device= msg_receiver.device_id
+ const msg_sender_name = msg_sender.name
+ const msg_receiver_device= msg_receiver.device_id
 
     // If the status is 'rejected', delete the request and send response
     if (status === 'rejected') {
 
-//       var message = {
-//         "URL": "https://fcm.googleapis.com/fcm/send",
-//         "Header": {
-//         "Content-Type": "application/json",
-//         "Authorization": "key=<Server_key>"
-//          },
-//         "BODY": {
-//         // to: manager.device_id,
-//         token: msg_receiver_device,
-//         collapse_key: 'green',
-//         notification: {
-//           "title": ` ${msg_sender} reject your Request to Join a New Habit Group`,
-//           "body": chat.name,     
-//           "mutable_content": false,       
-//           "sound": "Tri-tone",   
-//           },
-//           data: {
-//           "dl": "reject_group",
-//           "group_id": chat_id
-//           },
-//         }
-//       };
-//       console.log("1", message);
+// Function to send notification
+const message = {
+  token: msg_receiver_device,
+        notification: {
+          "title": ` ${msg_sender} reject your Request to Join a New Habit Group`,
+          "body": chat.name,     
+          // "mutable_content": false,       
+          // "sound": "Tri-tone",   
+          },
+          data: {
+          "dl": "reject_group",
+          "group_id": String(chat_id)
+          },
+android: {
+  notification: {
+    sound: 'Tri-tone',
+  },
+},
+apns: {
+  payload: {
+    aps: {
+      sound: 'default',
+      'mutable-content': false
+    },
+  },
+},
+};
 
-//   // Send the notification
-// admin.messaging().send(message)
-// .then(async (response) => {
-//   console.log('Successfully sent message:', response);
-//           // console.log("Successfully Sent With Resposne :", response);
-//           var body = message.notification.body;
-//           console.log("notification body for chat request<sent to gruop members>",body);
-//           const add_notification = await Notification.create(
-//             {
-//               sender_id: receiverId,
-//               receiver_id: senderId,
-//               chat_id: chat_id,
-//               message: message.notification.body,
-//               status: 1,
-//             })
-//          console.log("add_notification",add_notification);
-// })
-// .catch((error) => {
-//   console.log("Something Has Gone Wrong !");
-//   console.log('Error sending message:', error);
-// });
+admin.messaging().send(message)
+.then(async (response) => {
+  console.log('Successfully sent message:', response);
+
+  const add_notification = await Notification.create(
+    {
+      sender_id: receiverId,
+              receiver_id: senderId,
+              chat_id: chat_id,
+              message: message.notification.title,
+              status: 1,
+    })
+})
+.catch((error) => {
+  console.error('Error sending message:', error);
+});
 
       await request.deleteOne();
       return res.status(200).json({
@@ -1004,53 +987,54 @@ const updatedRequest = await Request.findOneAndUpdate(
   }
 );
 
-    console.log("updatedRequest", updatedRequest);
+  console.log("updatedRequest", updatedRequest);
 
-//     var message = {
-//       "URL": "https://fcm.googleapis.com/fcm/send",
-//       "Header": {
-//       "Content-Type": "application/json",
-//       "Authorization": "key=<Server_key>"
-//        },
-//       "BODY": {
-//       // to: manager.device_id,
-//        token: msg_receiver_device,
-//       collapse_key: 'green',
-//       notification: {
-//         "title": ` ${msg_sender} accepte your Request to Join a New Habit Group`,
-//         "body": chat.name,     
-//         "mutable_content": false,       
-//         "sound": "Tri-tone",   
-//         },
-//         data: {
-//         "dl": "accept_group",
-//         "group_id": chat_id
-//         },
-//       }
-//     };
 
-//    // Send the notification
-// admin.messaging().send(message)
-// .then(async (response) => {
-//   console.log('Successfully sent message:', response);
-//           // console.log("Successfully Sent With Resposne :", response);
-//           var body = message.notification.body;
-//           console.log("notification body for chat request<sent to gruop members>",body);
-//           const add_notification = await Notification.create(
-//             {
-//               sender_id: receiverId,
-//               receiver_id: senderId,
-//               chat_id: chat_id,
-//               message: message.notification.body,
-//               status: 1,
-//             })
-//          console.log("add_notification",add_notification);
-// })
+// Function to send notification
+const message = {
+  token: msg_receiver_device,
+      notification: {
+        "title": ` ${msg_sender} accepte your Request to Join a New Habit Group`,
+        "body": chat.name,     
+        // "mutable_content": false,       
+        // "sound": "Tri-tone",   
+        },
+        data: {
+        "dl": "accept_group",
+        "group_id": String(chat_id)
+        },
+android: {
+  notification: {
+    sound: 'Tri-tone',
+  },
+},
+apns: {
+  payload: {
+    aps: {
+      sound: 'default',
+      'mutable-content': false
+    },
+  },
+},
+};
 
-// .catch((error) => {
-//   console.log("Something Has Gone Wrong !");
-//   console.log('Error sending message:', error);
-// });
+admin.messaging().send(message)
+.then(async (response) => {
+  console.log('Successfully sent message:', response);
+
+  const add_notification = await Notification.create(
+    {
+      sender_id: receiverId,
+                    receiver_id: senderId,
+                    chat_id: chat_id,
+                    message: message.notification.title,
+                    status: 1,
+    })
+    console.log("add_notification",add_notification);
+})
+.catch((error) => {
+  console.error('Error sending message:', error);
+});
 
 return res.status(200).json({
       success: true,
