@@ -15,6 +15,14 @@ const ActivityLog = require("../Model/ActivityLogs");
 // var FCM = require('fcm-node');
 // var fcm = new FCM(server_key);
 
+const admin = require('firebase-admin');
+
+const serviceAccount = require('../habits-de1c4-b91a247d7e96.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 const AWS = require('aws-sdk');
 
 AWS.config.update({
@@ -101,12 +109,12 @@ exports.newGroupChat = async (req, res, next) => {
         chat_id: new_data._id,
         status:'accepted'
       });
-console.log("create_user",create_user);
+// console.log("create_user",create_user);
 
     emitEvent(req, ALERT, allMembers, `Welcome to ${name} Group`);
     emitEvent(req, REFETCH_CHATS, members);
 
-    console.log("new_data", new_data);
+    // console.log("new_data", new_data);
 
     const allMembers2 = [...members];
     // Save each member as a separate request in the request table
@@ -117,57 +125,55 @@ console.log("create_user",create_user);
         chat_id: new_data._id
       });
 
-          // const users_device_id = await User.findById({_id:memberId})
+          const users_device_id = await User.findById({_id:memberId})
 
-          // console.log("users_device_id",users_device_id.device_id);
+          console.log("users_device_id",users_device_id.device_id);
 
-//       var message = {
 
-//         "URL": "https://fcm.googleapis.com/fcm/send",
-//         "Header": {
-//         "Content-Type": "application/json",
-//         "Authorization": "key=<Server_key>"
-//          },
-//         "BODY": {
-//         // to: manager.device_id,
-        // token: users_device_id.device_id,
-//         collapse_key: 'green',
-//         notification: {
-//           "title": "Requested You to Join a New Habit Group",
-//           "body": `${name}`,     
-//           "mutable_content": false,       
-//           "sound": "Tri-tone",   
-//           },
-//           data: {
-//           "dl": "join_group",
-//           "group_id": new_data._id
-//           },
-//         }
-//       };
-  
+// Function to send notification
+  const message = {
+      token: users_device_id.device_id,
+      notification: {
+          "title": "Requested You to Join a New Habit Group",
+          "body": `${name}`,     
+          // "mutable_content": false,       
+          // "sound": "Tri-tone",   
+          },
+    data: {
+      "dl": "join_group",
+      "group_id": String(new_data._id)
+    },
+    android: {
+      notification: {
+        sound: 'Tri-tone',
+      },
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: 'default',
+          'mutable-content': false
+        },
+      },
+    },
+  };
 
-// //    // Send the notification
-// admin.messaging().send(message)
-// .then(async (response) => {
-//   console.log('Successfully sent message:', response);
-//           // console.log("Successfully Sent With Resposne :", response);
-//           var body = message.notification.body;
-//           console.log("notification body for chat request<sent to gruop members>",body);
-          const add_notification = await Notification.create(
-            {
-              sender_id: req.user,
-              receiver_id: memberId,
-              chat_id: new_data._id,
-              message: "Requested You to Join a New Habit Group",
-              status: 1,
-            })
-         console.log("add_notification",add_notification);
-// })
+  admin.messaging().send(message)
+    .then(async (response) => {
+      console.log('Successfully sent message:', response);
 
-// .catch((error) => {
-//   console.log("Something Has Gone Wrong !");
-//   console.log('Error sending message:', error);
-// });
+      const add_notification = await Notification.create(
+        {
+          sender_id: req.user,
+          receiver_id: memberId,
+          chat_id: new_data._id,
+          message: "Requested You to Join a New Habit Group",
+          status: 1,
+        })
+    })
+    .catch((error) => {
+      console.error('Error sending message:', error);
+    });
 
     });
 
@@ -461,6 +467,7 @@ exports.getMyChat = async (req, res, next) => {
 // right
 exports.getMyGroups = async (req, res, next) => {
   try {
+    let snednotificaton
     let lastWinnerId
     let query = {};
     const { searchQuery } = req.query;
@@ -572,8 +579,7 @@ exports.getMyGroups = async (req, res, next) => {
       const today = new Date();
       console.log("_id", _id);
       if (activityEndDate < today) { // Compare dates properly
-        console.log("members", members);
-    
+  
           console.log("1")
           const group = await Chat.findOne({ _id: _id, members: members }).populate('members').lean();
           console.log("group",group);
@@ -593,10 +599,11 @@ exports.getMyGroups = async (req, res, next) => {
             const membersById = {};
             console.log("44444");
             group.members.forEach(member => {
-              console.log("member",member);
+              // console.log("member================================================",member);
+              // snednotificaton=member.device_id
               membersById[member._id.toString()] = member;
             });
-    
+    // console.log("snednotificaton",snednotificaton);
             // Initialize points earned for each user
             const userPointsMap = {};
     
@@ -652,6 +659,51 @@ if (lastWinnerId && !group.winner_user.includes(lastWinnerId)) {
     { $addToSet: { winner_user: lastWinnerId } },
     { new: true }
   );
+
+//   group.members.forEach(member => {
+//     console.log("member================================================",group.name);
+//    console.log("lastWinnerId",lastWinnerId);
+//    membersById[member._id.toString()] = member;
+
+// // Function to send notification
+// const message = {
+//   token: member.device_id,
+//         notification: {
+//           "title": ` ${lastWinnerId} is winner for Habit Group`,
+//           "body": "chat.name",     
+//           // "mutable_content": false,       
+//           // "sound": "Tri-tone",   
+//           },
+//           data: {
+//           "dl": "reject_group",
+//           "group_id": String(group._id)
+//           },
+// android: {
+//   notification: {
+//     sound: 'Tri-tone',
+//   },
+// },
+// apns: {
+//   payload: {
+//     aps: {
+//       sound: 'default',
+//       'mutable-content': false
+//     },
+//   },
+// },
+// };
+// console.log("message",message);
+// admin.messaging().send(message)
+// .then(async (response) => {
+//   console.log('Successfully sent message:', response);
+// })
+// .catch((error) => {
+//   console.error('Error sending message:', error);
+// });
+
+
+//   });
+
   // groups.winner_user.push(lastWinnerId);
 }
     // console.log("winner_user",updatedActivityLog);
