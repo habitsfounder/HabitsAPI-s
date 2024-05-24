@@ -576,23 +576,48 @@ exports.getMyGroups = async (req, res, next) => {
       };
     }
 
+    const acceptedMembers = await Request.find({
+      status: 'accepted',
+      $or: [{ receiver: req.user }, { sender: req.user }]
+    });
+
+    console.log("acceptedMembers========================", acceptedMembers);
+    const acceptedMemberIds = acceptedMembers.flatMap(request => [request.receiver]);
+    console.log("acceptedMemberIds==============", acceptedMemberIds);
+
     let chats;
-    if (!req.user) {
-      return res.status(403).json({ error: 'User not authenticated.' });
+    if (Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0) {
+      chats = await Chat.find(query)
+        .populate({
+          path: "members",
+        })
+        .populate({
+          path: "habits",
+          populate: [
+            { path: "habit", model: "Habit" },
+            { path: "verification" } // Populate the verification field
+          ],
+        })
+        .populate("winner_user");
+    } else {
+      query = {
+        ...query,
+        members: { $in: acceptedMemberIds }
+      };
+      chats = await Chat.find(query)
+        .populate({
+          path: "members",
+          select: "-password -email"
+        })
+        .populate({
+          path: "habits",
+          populate: [
+            { path: "habit", model: "Habit" }
+          ],
+        })
+        .populate("winner_user");
     }
 
-    chats = await Chat.find(query)
-      .populate({
-        path: "members",
-      })
-      .populate({
-        path: "habits",
-        populate: [
-          { path: "habit", model: "Habit" },
-          { path: "verification" } // Populate the verification field
-        ],
-      })
-      .populate("winner_user");
 
     const currentDate = new Date();
     const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
