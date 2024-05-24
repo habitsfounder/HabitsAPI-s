@@ -21,6 +21,13 @@ const {
   STOP_TYPING,
 } = require("./constants/events.js");
 
+const admin = require('firebase-admin');
+
+const serviceAccount = require('./habits-de1c4-b91a247d7e96.json');
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 const app = express();
 require("dotenv").config();
 
