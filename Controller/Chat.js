@@ -8,8 +8,13 @@ const Message = require("../Model/Message");
 const Verification = require("../Model/VerificationMethod");
 const Notification = require("../Model/notification");
 const Request = require("../Model/Request");
-const { io,to } = require("../index");
+const { io, to } = require("../index");
 const ActivityLog = require("../Model/ActivityLogs");
+const WalletTrans = require("../Model/WalletTransactions");
+const Admin = require("../Model/Admin");
+
+
+
 
 // const server_key="AAAAE-KZEkM:APA91bEDP72perWe7LqgDFtBBs6DOoIYkNHyskJX9k5fOFQPR4fGD3gOF5FZqc1lLbQ0DkkdJuBUrmRTYtmvoi39nsWwBbzjm_PQ1GI4TujTOTF0C3iqvZEMkZ01BnQS-Z3LdBPbQRfr"
 // var FCM = require('fcm-node');
@@ -17,11 +22,11 @@ const ActivityLog = require("../Model/ActivityLogs");
 
 const admin = require('firebase-admin');
 
-const serviceAccount = require('../habits-de1c4-b91a247d7e96.json');
+// const serviceAccount = require('../habits-de1c4-b91a247d7e96.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount)
+// });
 
 const AWS = require('aws-sdk');
 
@@ -103,13 +108,13 @@ exports.newGroupChat = async (req, res, next) => {
       max_points
     });
 
-    const create_user =  await Request.create({
-        sender: req.user, // Assuming sender is the creator of the group
-        receiver: req.user,
-        chat_id: new_data._id,
-        status:'accepted'
-      });
-// console.log("create_user",create_user);
+    const create_user = await Request.create({
+      sender: req.user, // Assuming sender is the creator of the group
+      receiver: req.user,
+      chat_id: new_data._id,
+      status: 'accepted'
+    });
+    // console.log("create_user",create_user);
 
     emitEvent(req, ALERT, allMembers, `Welcome to ${name} Group`);
     emitEvent(req, REFETCH_CHATS, members);
@@ -125,55 +130,55 @@ exports.newGroupChat = async (req, res, next) => {
         chat_id: new_data._id
       });
 
-          const users_device_id = await User.findById({_id:memberId})
+      const users_device_id = await User.findById({ _id: memberId })
 
-          console.log("users_device_id",users_device_id.device_id);
+      console.log("users_device_id", users_device_id.device_id);
 
 
-// Function to send notification
-  const message = {
-      token: users_device_id.device_id,
-      notification: {
+      // Function to send notification
+      const message = {
+        token: users_device_id.device_id,
+        notification: {
           "title": "Requested You to Join a New Habit Group",
-          "body": `${name}`,     
+          "body": `${name}`,
           // "mutable_content": false,       
           // "sound": "Tri-tone",   
-          },
-    data: {
-      "dl": "join_group",
-      "group_id": String(new_data._id)
-    },
-    android: {
-      notification: {
-        sound: 'Tri-tone',
-      },
-    },
-    apns: {
-      payload: {
-        aps: {
-          sound: 'default',
-          'mutable-content': false
         },
-      },
-    },
-  };
+        data: {
+          "dl": "join_group",
+          "group_id": String(new_data._id)
+        },
+        android: {
+          notification: {
+            sound: 'Tri-tone',
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+              'mutable-content': false
+            },
+          },
+        },
+      };
 
-  admin.messaging().send(message)
-    .then(async (response) => {
-      console.log('Successfully sent message:', response);
+      admin.messaging().send(message)
+        .then(async (response) => {
+          console.log('Successfully sent message:', response);
 
-      const add_notification = await Notification.create(
-        {
-          sender_id: req.user,
-          receiver_id: memberId,
-          chat_id: new_data._id,
-          message: "Requested You to Join a New Habit Group",
-          status: 1,
+          const add_notification = await Notification.create(
+            {
+              sender_id: req.user,
+              receiver_id: memberId,
+              chat_id: new_data._id,
+              message: "Requested You to Join a New Habit Group",
+              status: 1,
+            })
         })
-    })
-    .catch((error) => {
-      console.error('Error sending message:', error);
-    });
+        .catch((error) => {
+          console.error('Error sending message:', error);
+        });
 
     });
 
@@ -268,10 +273,11 @@ exports.getMyChat = async (req, res, next) => {
   }
 };
 
-// when not work on verification 
+// // right
 // exports.getMyGroups = async (req, res, next) => {
-
 //   try {
+//     let snednotificaton
+//     let lastWinnerId
 //     let query = {};
 //     const { searchQuery } = req.query;
 
@@ -299,161 +305,235 @@ exports.getMyChat = async (req, res, next) => {
 //         creator: req.user
 //       };
 //     }
-//     console.log("req.user ", req.user);
 
 //     const acceptedMembers = await Request.find({
 //       status: 'accepted',
 //       $or: [{ receiver: req.user }, { sender: req.user }]
 //     });
 
+//     console.log("acceptedMembers========================",acceptedMembers);
+//     const acceptedMemberIds = acceptedMembers.flatMap(request => [request.receiver]);
+//     console.log("acceptedMemberIds==============",acceptedMemberIds);
 
-//     const acceptedMemberIds = acceptedMembers.flatMap(request => [request.sender, request.receiver]);
-
-//     // Include only groups where all accepted members exist
-
-
-//     console.log("acceptedMemberIds", acceptedMemberIds);
-
+//     let chats;
 //     if (Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0) {
-//       console.log("11111");
-
-
-//       const chats = await Chat.find(query)
+//       chats = await Chat.find(query)
 //         .populate({
 //           path: "members",
-//           // select: "name avatar",
 //         })
 //         .populate({
 //           path: "habits",
-          
-//           populate: {
-//             path: "habit verification",
-//             models: {
-//               path: "Habit",
-//               model: "Habit",
-//             },
-//             models: {
-//               path: "Verification",
-//               model: "Verification",
-//             },
-//           },
+//           populate: [
+//             { path: "habit", model: "Habit" },
+//             { path: "verification" } // Populate the verification field
+//           ],
 //         })
 //         .populate("winner_user");
-
-//       const currentDate = new Date();
-//       const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
-//         const endDate = new Date(activityEndDate);
-//         const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
-
-//         return {
-//           _id,
-//           groupChat,
-//           name,
-//           habits,
-//           members,
-//           // habit_verification_method,
-//           groupImage,
-//           groupDescription,
-//           activityStartDate,
-//           activityEndDate,
-//           monetaryPotAmount,
-//           mooney_transferred,
-//           daysLeft,
-//           max_points,
-//           winner_user,
-//           active_memberIds: acceptedMemberIds
-
-//         };
-//       });
-
-//       return res.status(200).json({
-//         success: true,
-//         groups
-//       });
-
 //     } else {
 //       query = {
 //         ...query,
-//         members: {
-//           $in: acceptedMemberIds
-//         }
+//         members: { $in: acceptedMemberIds }
 //       };
-//       // console.log("11111111111111111111111111111111");
-//       const chats = await Chat.find(query)
+//       chats = await Chat.find(query)
 //         .populate({
 //           path: "members",
-//           // select: "name avatar",
+//           select: "-password -email"
 //         })
 //         .populate({
 //           path: "habits",
-//           populate: {
-//             path: "habit verification",
-//             models: {
-//               path: "Habit",
-//               model: "Habit",
-//             },
-//             models: {
-//               path: "Habit",
-//               model: "Habit",
-//             },
-//           },
+//           populate: [
+//             { path: "habit", model: "Habit" }
+//           ],
 //         })
 //         .populate("winner_user");
-
-//         // console.log("11111111111111111111111111111111",chats[0].habits);
-
-//       const currentDate = new Date();
-//       const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
-//         const endDate = new Date(activityEndDate);
-//         const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
-       
-//         console.log("habits",habits);
-
-//         // const habitId = "6622546edae07673952f10fa";
-//         // const verificationId = "6622546edae07673952f10fb";
-        
-//         const updatedHabits = habits.map(habit => {
-//           // Check if habit ID and verification ID match the condition
-//           // if (habitId && verificationId) {
-//             // Push the verification object into the verification field of the habit
-//             habit.verification = {
-//               "_id": habit.id,
-//               "name": "Timer",
-//               "logo": "https://habits-attachments.s3.amazonaws.com/2024-4-19/1st.png",
-//               "units": "Hours"
-//             };
-//           // }
-//           return habit;
-//         }); 
-
-//         return {
-//           _id,
-//           groupChat,
-//           name,
-//           habits:updatedHabits,
-//           members,
-//           // habit_verification_method,
-//           groupImage,
-//           groupDescription,
-//           activityStartDate,
-//           activityEndDate,
-//           monetaryPotAmount,
-//           mooney_transferred,
-//           daysLeft,
-//           max_points,
-//           winner_user,
-//           active_memberIds: acceptedMemberIds
-//           // avatar: members.slice(0, 3).map(({ avatar }) => avatar.url)
-//         };
-//       });
-//       // console.log("v",groups);    
-//       return res.status(200).json({
-//         success: true,
-//         groups
-//       });
-
 //     }
 
+//     const currentDate = new Date();
+//     const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
+//       const endDate = new Date(activityEndDate);
+//              const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
+
+
+//       return {
+//         _id,
+//         groupChat,
+//         name,
+//         habits: habits.map(habit => {
+//           if (habit.verification) {
+//             const verificationDetails = habit.habit.details.filter(detail => detail._id.toString() === habit.verification.toString());
+//             if (verificationDetails.length > 0) {
+//               return {
+//                 ...habit.toObject(),
+//                 verificationDetails 
+//               };
+//             } 
+//           }
+//           return habit.toObject(); 
+//         }),
+//         members,
+//         groupImage,
+//         groupDescription,
+//         activityStartDate,
+//         activityEndDate,
+//         monetaryPotAmount,
+//         mooney_transferred,
+//         daysLeft,
+//         max_points,
+//         winner_user,
+//         active_memberIds: acceptedMemberIds,
+//       };
+//     });
+
+//     groups.forEach(async ({ members, _id, activityEndDate, winner_user }) => {
+//       const today = new Date();
+//       console.log("_id", _id);
+//       if (activityEndDate < today) { // Compare dates properly
+
+//           console.log("1")
+//           const group = await Chat.findOne({ _id: _id, members: members }).populate('members').lean();
+//           console.log("group",group);
+
+
+//           // if (!group) {
+//           //   return res.status(403).json({ error: 'User does not have access to this group.' });
+//           // }
+
+//           // Fetch activity logs for the group
+//           const activityLogs = await ActivityLog.find({ chat_id: _id }).populate('user_id').populate('chat_id');
+
+//          console.log("activityLogs",activityLogs);
+
+//           if (activityLogs.length > 0) {
+//             // Group members by their IDs
+//             const membersById = {};
+//             console.log("44444");
+//             group.members.forEach(member => {
+//               // console.log("member================================================",member);
+//               // snednotificaton=member.device_id
+//               membersById[member._id.toString()] = member;
+//             });
+//     // console.log("snednotificaton",snednotificaton);
+//             // Initialize points earned for each user
+//             const userPointsMap = {};
+
+//             // Calculate sum of points earned for each user
+//             activityLogs.forEach(log => {
+//               const userId = log.user_id._id.toString();
+//     console.log("userId",userId);
+//               // Initialize newBalance for each user
+//               let newBalance = parseFloat(userPointsMap[userId]) || 0;
+
+//               // Update newBalance with points earned from current log
+//               newBalance += parseFloat(log.points_earned);
+
+//               // Update points earned for the user
+//               userPointsMap[userId] = newBalance;
+//               console.log("newBalance",newBalance);
+//             });
+
+//             // Update members array with points and last activity done
+//             Object.keys(membersById).forEach(memberId => {
+//               const member = membersById[memberId];
+//               member.points_earned = userPointsMap[memberId] || '0';
+//               const correspondingLog = activityLogs.find(log => log.user_id._id.toString() === memberId);
+//               member.activity_done = correspondingLog ? correspondingLog.activity_done : '';
+//             });
+
+//             // Convert the object of members back to an array
+//             const groupedMembers = Object.values(membersById);
+//             groupedMembers.sort((a, b) => parseFloat(b.points_earned) - parseFloat(a.points_earned));
+//     console.log("groupedMembers",groupedMembers[0]._id);
+//     // console.log("group",group.winner_user);
+//     const last_id = groupedMembers[0]._id
+
+// //     if (groupedMembers.length > 0) {
+
+// //       const updatedActivityLog = await Chat.findByIdAndUpdate(
+// //         _id,
+// //         { $addToSet: { winner_user: last_id } }, // Use $addToSet to add the new winner_user if it doesn't already exist
+// //         { new: true }
+// //       );
+// //      group.winner_user.push(last_id);
+// // // console.log("updateduser",updateduser);
+
+// //     }
+
+
+
+//  lastWinnerId = groupedMembers.length > 0 ? groupedMembers[0]._id : null;
+
+// if (lastWinnerId && !group.winner_user.includes(lastWinnerId)) {
+//   await Chat.findByIdAndUpdate(
+//     group._id,
+//     { $addToSet: { winner_user: lastWinnerId } },
+//     { new: true }
+//   );
+
+// //   group.members.forEach(member => {
+// //     console.log("member================================================",group.name);
+// //    console.log("lastWinnerId",lastWinnerId);
+// //    membersById[member._id.toString()] = member;
+
+// // // Function to send notification
+// // const message = {
+// //   token: member.device_id,
+// //         notification: {
+// //           "title": ` ${lastWinnerId} is winner for Habit Group`,
+// //           "body": "chat.name",     
+// //           // "mutable_content": false,       
+// //           // "sound": "Tri-tone",   
+// //           },
+// //           data: {
+// //           "dl": "reject_group",
+// //           "group_id": String(group._id)
+// //           },
+// // android: {
+// //   notification: {
+// //     sound: 'Tri-tone',
+// //   },
+// // },
+// // apns: {
+// //   payload: {
+// //     aps: {
+// //       sound: 'default',
+// //       'mutable-content': false
+// //     },
+// //   },
+// // },
+// // };
+// // console.log("message",message);
+// // admin.messaging().send(message)
+// // .then(async (response) => {
+// //   console.log('Successfully sent message:', response);
+// // })
+// // .catch((error) => {
+// //   console.error('Error sending message:', error);
+// // });
+
+
+// //   });
+
+//   // groups.winner_user.push(lastWinnerId);
+// }
+//     // console.log("winner_user",updatedActivityLog);
+//   // return res.status(200).json({
+//   //     success: true,
+//   //     groups:group,
+
+//   //   });
+//             // return res.json({ status: true, message: "Data fetched successfully", groups: groups, max_points: group.max_points });
+
+//           } 
+//       }
+//     });
+
+//   // groups.winner_user.push(lastWinnerId);
+
+//     return res.status(200).json({
+//       success: true,
+//       groups,
+
+//     });
 //   } catch (error) {
 //     console.log(error);
 //     return res.status(500).json({
@@ -464,11 +544,10 @@ exports.getMyChat = async (req, res, next) => {
 // };
 
 
-// right
+
+
 exports.getMyGroups = async (req, res, next) => {
   try {
-    let snednotificaton
-    let lastWinnerId
     let query = {};
     const { searchQuery } = req.query;
 
@@ -497,53 +576,28 @@ exports.getMyGroups = async (req, res, next) => {
       };
     }
 
-    const acceptedMembers = await Request.find({
-      status: 'accepted',
-      $or: [{ receiver: req.user }, { sender: req.user }]
-    });
-
-    console.log("acceptedMembers========================",acceptedMembers);
-    const acceptedMemberIds = acceptedMembers.flatMap(request => [request.receiver]);
-    console.log("acceptedMemberIds==============",acceptedMemberIds);
-
     let chats;
-    if (Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0) {
-      chats = await Chat.find(query)
-        .populate({
-          path: "members",
-        })
-        .populate({
-          path: "habits",
-          populate: [
-            { path: "habit", model: "Habit" },
-            { path: "verification" } // Populate the verification field
-          ],
-        })
-        .populate("winner_user");
-    } else {
-      query = {
-        ...query,
-        members: { $in: acceptedMemberIds }
-      };
-      chats = await Chat.find(query)
-        .populate({
-          path: "members",
-          select: "-password -email"
-        })
-        .populate({
-          path: "habits",
-          populate: [
-            { path: "habit", model: "Habit" }
-          ],
-        })
-        .populate("winner_user");
+    if (!req.user) {
+      return res.status(403).json({ error: 'User not authenticated.' });
     }
+
+    chats = await Chat.find(query)
+      .populate({
+        path: "members",
+      })
+      .populate({
+        path: "habits",
+        populate: [
+          { path: "habit", model: "Habit" },
+          { path: "verification" } // Populate the verification field
+        ],
+      })
+      .populate("winner_user");
 
     const currentDate = new Date();
     const groups = chats.map(({ members, _id, groupChat, name, habits, groupImage, groupDescription, activityStartDate, activityEndDate, monetaryPotAmount, mooney_transferred, max_points, winner_user }) => {
       const endDate = new Date(activityEndDate);
-             const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
-
+      const daysLeft = Math.ceil((endDate - currentDate) / (1000 * 60 * 60 * 24)); // Calculate the difference in days
 
       return {
         _id,
@@ -555,11 +609,11 @@ exports.getMyGroups = async (req, res, next) => {
             if (verificationDetails.length > 0) {
               return {
                 ...habit.toObject(),
-                verificationDetails 
+                verificationDetails
               };
-            } 
+            }
           }
-          return habit.toObject(); 
+          return habit.toObject();
         }),
         members,
         groupImage,
@@ -571,160 +625,241 @@ exports.getMyGroups = async (req, res, next) => {
         daysLeft,
         max_points,
         winner_user,
-        active_memberIds: acceptedMemberIds,
+        active_memberIds: [], // Initialize active_memberIds as an empty array
       };
-    });
 
-    groups.forEach(async ({ members, _id, activityEndDate, winner_user }) => {
+    });
+    // console.log("groupsgroups",groups);
+    // Update active_memberIds for each group
+
+    for (let group of groups) {
+      const { members, _id, activityEndDate, winner_user, mooney_transferred } = group;
+
+      const acceptedMembers2 = await Request.find({
+        status: 'accepted',
+        $or: [{ receiver: req.user }, { sender: req.user }],
+        chat_id: _id
+      });
+      const acceptedMemberIds12 = acceptedMembers2.flatMap(request => [request.receiver.toString()]);
+      const acceptedMemberIds3 = [...new Set(acceptedMemberIds12)];
+
+      // Ensure active_memberIds is initialized as an array
+      group.active_memberIds = group.active_memberIds || [];
+      // Add accepted member IDs to active_memberIds array
+      group.active_memberIds.push(...acceptedMemberIds3);
+
+
       const today = new Date();
-      console.log("_id", _id);
       if (activityEndDate < today) { // Compare dates properly
+        const groupData = await Chat.findOne({ _id: _id, members: members }).populate('members').lean();
+        if (!groupData) {
+          console.log("Group data not found for ID:", group._id);
+          // Handle the error condition appropriately, e.g., continue to the next iteration
+          continue;
+        }
+        // console.log("membersmembers", group._id); // Corrected variable name to group._id
+        // Update winner_user if necessary
+        const activityLogs = await ActivityLog.find({ chat_id: _id }).populate('user_id').populate('chat_id');
+
+        if (activityLogs.length > 0) {
+          const membersById = {};
+          groupData.members.forEach(member => {
+            membersById[member._id.toString()] = member;
+          });
+          // console.log("activityLogs",activityLogs);
+          const userPointsMap = {};
+          activityLogs.forEach(log => {
+            const userId = log.user_id._id.toString();
+            let newBalance = parseFloat(userPointsMap[userId]) || 0;
+            newBalance += parseFloat(log.points_earned);
+            userPointsMap[userId] = newBalance;
+          });
+
+          Object.keys(membersById).forEach(memberId => {
+            const member = membersById[memberId];
+            member.points_earned = userPointsMap[memberId] || '0';
+            const correspondingLog = activityLogs.find(log => log.user_id._id.toString() === memberId);
+            member.activity_done = correspondingLog ? correspondingLog.activity_done : '';
+          });
+
+          const groupedMembers = Object.values(membersById);
+          groupedMembers.sort((a, b) => parseFloat(b.points_earned) - parseFloat(a.points_earned));
+
+          // console.log("groupedMembers",groupedMembers);
+
+          lastWinnerId = groupedMembers.length > 0 ? groupedMembers[0]._id : null;
+
+          if (lastWinnerId || !groupData.winner_user.includes(lastWinnerId)) {
+            await Chat.findByIdAndUpdate(
+              groupData._id,
+              { $addToSet: { winner_user: lastWinnerId } },
+              { new: true }
+            );
+          }
+
+          group.members.forEach(member => {
+            console.log("device_id", member.device_id);
+                  // // Function to send notification
+          const message = {
+            token: member.device_id,
+            notification: {
+              "title": ` ${member.name} is winner for ${group.name} Group`,
+              "body": group.name,
+              // "mutable_content": false,       
+              // "sound": "Tri-tone",   
+            },
+            data: {
+              "dl": "reject_group",
+              "group_id": String(group._id)
+            },
+            android: {
+              notification: {
+                sound: 'Tri-tone',
+              },
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: 'default',
+                  'mutable-content': false
+                },
+              },
+            },
+          };
+          console.log("message", message);
+          admin.messaging().send(message)
+            .then(async (response) => {
+              console.log('Successfully sent message:', response);
+            })
+            .catch((error) => {
+              console.error('Error sending message:', error);
+            });
+
+
+          });
+          if (groupData.money_transferred == false) {
+
+            // console.log("false");
+            // console.log("group.active_memberIds", group.active_memberIds);
+            // console.log("group.monetaryPotAmount", group.monetaryPotAmount);
+
+            // Query the WalletTrans collection for wallet amounts of active members
+            const walletAmounts = await WalletTrans.find({
+              user_id: { $in: group.active_memberIds },
+            });
+
+            console.log("Wallet amounts of active members:", walletAmounts);
+
+            // Filter out members who are not winners
+            const nonWinners = group.active_memberIds.filter(memberId =>
+              !activityLogs.some(log => log.user_id._id.toString() === memberId)
+            );
+
+            // Subtract monetaryPotAmount from non-winners' wallet amounts
+            const adjustedWallets = walletAmounts.map(wallet => {
+              if (nonWinners.includes(wallet.user_id.toString())) {
+                wallet.amount -= group.monetaryPotAmount;
+              }
+              return wallet;
+            });
+
+            // Calculate the total amount after adjustments
+            // const totalAmount = adjustedWallets.reduce((sum, wallet) => sum + wallet.amount, 0);
+            const totalAmount = group.monetaryPotAmount * group.active_memberIds.length;
+            const tenPercent = totalAmount * 0.10;
+            const remainingAmount = totalAmount - tenPercent;
+
+            // console.log("totalAmount", totalAmount);
+            // console.log("10% of the total amount:", tenPercent);
+            // console.log("remaining amount is", remainingAmount);
+
+            // Add remaining amount to the winner's wallet
+            if (lastWinnerId) {
+              const winnerWallet = adjustedWallets.find(wallet => wallet.user_id.toString() === lastWinnerId.toString());
+              if (winnerWallet) {
+                winnerWallet.amount += remainingAmount - group.monetaryPotAmount;
+              }
+            }
+
+            // Find admin's wallet and add 10% amount to admin's wallet
+            const admin = await Admin.findOne({ role: 'Admin' }); // Adjust the query as per your schema
+            if (admin) {
+              await WalletTrans.findOneAndUpdate(
+                { user_id: admin._id },
+                { $inc: { amount: tenPercent } },
+                { new: true }
+              );
+            }
+
+            // Log the results
+            // console.log("Adjusted wallet amounts:", adjustedWallets);
+            // console.log("10% of the total amount:", tenPercent);
+
+            // Optionally, you can save the adjusted wallet amounts back to the database
+            for (let wallet of adjustedWallets) {
+              await WalletTrans.findByIdAndUpdate(wallet._id, { amount: wallet.amount });
+            }
+
+        
   
-          console.log("1")
-          const group = await Chat.findOne({ _id: _id, members: members }).populate('members').lean();
-          console.log("group",group);
+            // Mark the group as processed
+            await Chat.findByIdAndUpdate(group._id, { money_transferred: true });
 
-  
-          // if (!group) {
-          //   return res.status(403).json({ error: 'User does not have access to this group.' });
-          // }
-    
-          // Fetch activity logs for the group
-          const activityLogs = await ActivityLog.find({ chat_id: _id }).populate('user_id').populate('chat_id');
-    
-         console.log("activityLogs",activityLogs);
+            // console.log("deviceid", group.members);
 
-          if (activityLogs.length > 0) {
-            // Group members by their IDs
-            const membersById = {};
-            console.log("44444");
-            group.members.forEach(member => {
-              // console.log("member================================================",member);
-              // snednotificaton=member.device_id
-              membersById[member._id.toString()] = member;
-            });
-    // console.log("snednotificaton",snednotificaton);
-            // Initialize points earned for each user
-            const userPointsMap = {};
-    
-            // Calculate sum of points earned for each user
-            activityLogs.forEach(log => {
-              const userId = log.user_id._id.toString();
-    console.log("userId",userId);
-              // Initialize newBalance for each user
-              let newBalance = parseFloat(userPointsMap[userId]) || 0;
-    
-              // Update newBalance with points earned from current log
-              newBalance += parseFloat(log.points_earned);
-    
-              // Update points earned for the user
-              userPointsMap[userId] = newBalance;
-              console.log("newBalance",newBalance);
-            });
-    
-            // Update members array with points and last activity done
-            Object.keys(membersById).forEach(memberId => {
-              const member = membersById[memberId];
-              member.points_earned = userPointsMap[memberId] || '0';
-              const correspondingLog = activityLogs.find(log => log.user_id._id.toString() === memberId);
-              member.activity_done = correspondingLog ? correspondingLog.activity_done : '';
-            });
-    
-            // Convert the object of members back to an array
-            const groupedMembers = Object.values(membersById);
-            groupedMembers.sort((a, b) => parseFloat(b.points_earned) - parseFloat(a.points_earned));
-    console.log("groupedMembers",groupedMembers[0]._id);
-    // console.log("group",group.winner_user);
-    const last_id = groupedMembers[0]._id
-    
-//     if (groupedMembers.length > 0) {
-
-//       const updatedActivityLog = await Chat.findByIdAndUpdate(
-//         _id,
-//         { $addToSet: { winner_user: last_id } }, // Use $addToSet to add the new winner_user if it doesn't already exist
-//         { new: true }
-//       );
-//      group.winner_user.push(last_id);
-// // console.log("updateduser",updateduser);
-      
-//     }
+            // Iterate over each member to log their device_id
+            // group.members.forEach(member => {
+            //   console.log("device_id", member.device_id);
+            //         // // Function to send notification
+            // const message = {
+            //   token: member.device_id,
+            //   notification: {
+            //     "title": ` ${lastWinnerId} is winner for Habit Group`,
+            //     "body": group.name,
+            //     // "mutable_content": false,       
+            //     // "sound": "Tri-tone",   
+            //   },
+            //   data: {
+            //     "dl": "reject_group",
+            //     "group_id": String(group._id)
+            //   },
+            //   android: {
+            //     notification: {
+            //       sound: 'Tri-tone',
+            //     },
+            //   },
+            //   apns: {
+            //     payload: {
+            //       aps: {
+            //         sound: 'default',
+            //         'mutable-content': false
+            //       },
+            //     },
+            //   },
+            // };
+            // console.log("message", message);
+            // admin.messaging().send(message)
+            //   .then(async (response) => {
+            //     console.log('Successfully sent message:', response);
+            //   })
+            //   .catch((error) => {
+            //     console.error('Error sending message:', error);
+            //   });
 
 
-
- lastWinnerId = groupedMembers.length > 0 ? groupedMembers[0]._id : null;
-
-if (lastWinnerId && !group.winner_user.includes(lastWinnerId)) {
-  await Chat.findByIdAndUpdate(
-    group._id,
-    { $addToSet: { winner_user: lastWinnerId } },
-    { new: true }
-  );
-
-//   group.members.forEach(member => {
-//     console.log("member================================================",group.name);
-//    console.log("lastWinnerId",lastWinnerId);
-//    membersById[member._id.toString()] = member;
-
-// // Function to send notification
-// const message = {
-//   token: member.device_id,
-//         notification: {
-//           "title": ` ${lastWinnerId} is winner for Habit Group`,
-//           "body": "chat.name",     
-//           // "mutable_content": false,       
-//           // "sound": "Tri-tone",   
-//           },
-//           data: {
-//           "dl": "reject_group",
-//           "group_id": String(group._id)
-//           },
-// android: {
-//   notification: {
-//     sound: 'Tri-tone',
-//   },
-// },
-// apns: {
-//   payload: {
-//     aps: {
-//       sound: 'default',
-//       'mutable-content': false
-//     },
-//   },
-// },
-// };
-// console.log("message",message);
-// admin.messaging().send(message)
-// .then(async (response) => {
-//   console.log('Successfully sent message:', response);
-// })
-// .catch((error) => {
-//   console.error('Error sending message:', error);
-// });
-
-
-//   });
-
-  // groups.winner_user.push(lastWinnerId);
-}
-    // console.log("winner_user",updatedActivityLog);
-  // return res.status(200).json({
-  //     success: true,
-  //     groups:group,
-      
-  //   });
-            // return res.json({ status: true, message: "Data fetched successfully", groups: groups, max_points: group.max_points });
-    
-          } 
+            // });
+          }
+        }
       }
-    });
-    
-  // groups.winner_user.push(lastWinnerId);
-    
+
+    }
+    // console.log("group.active_memberIds",groups);
+
     return res.status(200).json({
       success: true,
       groups,
-      
     });
+
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -733,6 +868,7 @@ if (lastWinnerId && !group.winner_user.includes(lastWinnerId)) {
     });
   }
 };
+
 
 
 
@@ -1094,23 +1230,23 @@ exports.getMessages = async (req, res, next) => {
 
 exports.get_user_contact_list = async (req, res, next) => {
 
-  const arr = req.body.numbers; 
+  const arr = req.body.numbers;
 
   try {
-    const getuser1 = await User.find(); 
-  
+    const getuser1 = await User.find();
+
     const matchedUsers = getuser1.filter(user => arr.includes(parseInt(user.contact)));
-    
-    if (matchedUsers.length>0) {
-     return res.status(200).json({
-          success: true,
-          messages:"get data successfully",
-          members: matchedUsers
-        });
-    }else{
+
+    if (matchedUsers.length > 0) {
       return res.status(200).json({
         success: true,
-        messages:"no match data",
+        messages: "get data successfully",
+        members: matchedUsers
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        messages: "no match data",
       });
     }
 
@@ -1123,7 +1259,7 @@ exports.get_user_contact_list = async (req, res, next) => {
   //   try {
   //     let query = {};
   //     const { searchQuery } = req.query;
-  
+
   //     if (searchQuery) {
   //       const userId = req.user;
   //       console.log("22",userId);
@@ -1150,7 +1286,7 @@ exports.get_user_contact_list = async (req, res, next) => {
   //       };
   //     }
   //     // console.log("22",userId);
-  
+
   //     // const acceptedMembers = await Request.find({
   //     //   status: 'accepted',
   //     //   $or: [{ receiver: req.user }, { sender: req.user }]
@@ -1158,23 +1294,23 @@ exports.get_user_contact_list = async (req, res, next) => {
   // // console.log("acceptedMembers",acceptedMembers);
   //     const acceptedMemberIds = acceptedMembers.flatMap(request => [request.sender, request.receiver]);
   //     console.log("22",acceptedMemberIds);
-  
+
   //     if (Array.isArray(acceptedMemberIds) && acceptedMemberIds.length === 0) {
   //       const chats = await Chat.find(query)
   //         .populate({
   //           path: "members",
   //           // select: "name avatar",
   //         });
-  
+
   //       const memberArrays = chats.map(({ members }) => members);
-  
+
   //       const membersArray = [].concat.apply([], memberArrays); // Flatten the array of arrays
-  
+
   //       return res.status(200).json({
   //         success: true,
   //         members: membersArray
   //       });
-  
+
   //     } else {
   //       query = {
   //         ...query,
@@ -1182,25 +1318,25 @@ exports.get_user_contact_list = async (req, res, next) => {
   //           $in: acceptedMemberIds
   //         }
   //       };
-  
+
   //       const chats = await Chat.find(query)
   //         .populate({
   //           path: "members",
   //           // select: "name avatar",
   //         });
   //         console.log("chats",chats);
-  
+
   //       const memberArrays = chats.map(({ members }) => members);
-  
+
   //       const membersArray = [].concat.apply([], memberArrays); // Flatten the array of arrays
-  
+
   //       return res.status(200).json({
   //         success: true,
   //         members: membersArray
   //       });
-  
+
   //     }
-  
+
   //   } catch (error) {
   //     console.log(error);
   //     return res.status(500).json({
@@ -1208,8 +1344,8 @@ exports.get_user_contact_list = async (req, res, next) => {
   //       error: "Internal Server Error"
   //     });
   //   }
- 
- 
+
+
 };
 
 
@@ -1257,7 +1393,7 @@ exports.add_message = async (req, res, next) => {
     if (!group_id || !data) {
       return res.status(400).json({ error: "Group ID and data are required." });
     }
-// console.log("111111");
+    // console.log("111111");
     // Create a new message
     const newMessage = new Message({
       chat: group_id,
@@ -1266,19 +1402,19 @@ exports.add_message = async (req, res, next) => {
       type: data.type,
       activity_verification: data.activity_verification,
       date: data.date,
-      meta_data:data.meta_data
+      meta_data: data.meta_data
     });
 
     // console.log("111116666666661");
 
     // Save the message to the database
-   const add_data =  await newMessage.save();
-// console.log("add_data",add_data);
+    const add_data = await newMessage.save();
+    // console.log("add_data",add_data);
     // Emit the new message to the chat room
     const io = req.app.get("io");
-  const newmsg = io.to(group_id).emit("NEW_MESSAGE", newMessage);
+    const newmsg = io.to(group_id).emit("NEW_MESSAGE", newMessage);
     // console.log("io",io);
-    console.log("newMessage",newmsg);
+    console.log("newMessage", newmsg);
 
 
     return res.json({ status: true, message: "Message added successfully." });

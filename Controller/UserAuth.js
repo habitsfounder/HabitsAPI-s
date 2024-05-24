@@ -19,11 +19,6 @@ const Notification =require("../Model/notification")
 
 const admin = require('firebase-admin');
 
-// const serviceAccount = require('../habits-de1c4-b91a247d7e96.json');
-
-// admin.initializeApp({
-//   credential: admin.credential.cert(serviceAccount)
-// });
 
 // Now you can use admin SDK methods to send notifications
 
